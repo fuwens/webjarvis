@@ -1,0 +1,367 @@
+/*
+ * @Author: fuwen
+ * @LastEditors: fuwens@163.com
+ * @Date: 2025-12-05 11:55:16
+ * @Description: 介绍文件的作用、文件的入参、出参。
+ */
+@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;700&family=Rajdhani:wght@400;500;600&display=swap');
+@import "tailwindcss";
+
+/* ========================
+   Jarvis HUD Theme Variables
+   ======================== */
+
+:root {
+  /* Jarvis Blue Theme (Default) */
+  --hud-primary: #00d4ff;
+  --hud-secondary: #0099cc;
+  --hud-accent: #66e5ff;
+  --hud-glow: rgba(0, 212, 255, 0.5);
+  --hud-bg: rgba(0, 20, 40, 0.85);
+  --hud-border: rgba(0, 212, 255, 0.3);
+  --hud-text: #e0f7ff;
+  
+  /* Particle colors */
+  --particle-core: #00d4ff;
+  --particle-glow: #66e5ff;
+  
+  font-family: 'Orbitron', 'Rajdhani', system-ui, sans-serif;
+  line-height: 1.5;
+  font-weight: 400;
+  color-scheme: dark;
+  color: var(--hud-text);
+  background-color: #000810;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Neon Purple Theme */
+[data-theme="neon-purple"] {
+  --hud-primary: #bf00ff;
+  --hud-secondary: #9900cc;
+  --hud-accent: #e066ff;
+  --hud-glow: rgba(191, 0, 255, 0.5);
+  --hud-bg: rgba(20, 0, 40, 0.85);
+  --hud-border: rgba(191, 0, 255, 0.3);
+  --hud-text: #f0e0ff;
+  --particle-core: #bf00ff;
+  --particle-glow: #e066ff;
+}
+
+/* Holographic Green Theme */
+[data-theme="holo-green"] {
+  --hud-primary: #00ff88;
+  --hud-secondary: #00cc6a;
+  --hud-accent: #66ffaa;
+  --hud-glow: rgba(0, 255, 136, 0.5);
+  --hud-bg: rgba(0, 20, 15, 0.85);
+  --hud-border: rgba(0, 255, 136, 0.3);
+  --hud-text: #e0fff0;
+  --particle-core: #00ff88;
+  --particle-glow: #66ffaa;
+}
+
+/* ========================
+   Global Styles
+   ======================== */
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html, body, #root {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+}
+
+body {
+  background: radial-gradient(ellipse at center, #001428 0%, #000810 100%);
+}
+
+/* ========================
+   HUD Animations
+   ======================== */
+
+@keyframes pulse {
+  0%, 100% { opacity: 0.6; }
+  50% { opacity: 1; }
+}
+
+@keyframes scan {
+  0% { transform: translateY(-100%); }
+  100% { transform: translateY(100vh); }
+}
+
+@keyframes rotate {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+@keyframes glow-pulse {
+  0%, 100% { 
+    box-shadow: 0 0 5px var(--hud-glow), 0 0 10px var(--hud-glow);
+  }
+  50% { 
+    box-shadow: 0 0 15px var(--hud-glow), 0 0 30px var(--hud-glow);
+  }
+}
+
+@keyframes speaking-pulse {
+  0%, 100% { transform: scale(1); opacity: 0.8; }
+  50% { transform: scale(1.05); opacity: 1; }
+}
+
+@keyframes particle-float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-10px); }
+}
+
+/* ========================
+   HUD Components
+   ======================== */
+
+.hud-container {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 100;
+}
+
+.hud-element {
+  position: absolute;
+  border: 1px solid var(--hud-border);
+  background: var(--hud-bg);
+  backdrop-filter: blur(10px);
+  color: var(--hud-text);
+}
+
+.hud-glow {
+  animation: glow-pulse 2s ease-in-out infinite;
+}
+
+.hud-speaking {
+  animation: speaking-pulse 0.5s ease-in-out infinite;
+}
+
+/* Scanning line effect */
+.scan-line {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, var(--hud-primary), transparent);
+  animation: scan 3s linear infinite;
+  opacity: 0.3;
+}
+
+/* Crosshair */
+.crosshair {
+  position: absolute;
+  width: 60px;
+  height: 60px;
+  border: 2px solid var(--hud-primary);
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+}
+
+.crosshair::before,
+.crosshair::after {
+  content: '';
+  position: absolute;
+  background: var(--hud-primary);
+}
+
+.crosshair::before {
+  width: 20px;
+  height: 2px;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+}
+
+.crosshair::after {
+  width: 2px;
+  height: 20px;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+}
+
+/* Side menu */
+.side-menu {
+  position: fixed;
+  right: 0;
+  top: 50%;
+  transform: translateY(-50%) translateX(100%);
+  width: 300px;
+  background: var(--hud-bg);
+  border: 1px solid var(--hud-border);
+  border-right: none;
+  backdrop-filter: blur(20px);
+  transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  pointer-events: auto;
+  z-index: 200;
+}
+
+.side-menu.open {
+  transform: translateY(-50%) translateX(0);
+}
+
+.menu-item {
+  padding: 16px 24px;
+  border-bottom: 1px solid var(--hud-border);
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.menu-item:hover {
+  background: rgba(0, 212, 255, 0.1);
+  padding-left: 32px;
+}
+
+.menu-item.active {
+  background: var(--hud-glow);
+  color: #000;
+}
+
+/* Status indicators */
+.status-indicator {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+}
+
+.status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--hud-primary);
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+.status-dot.active {
+  background: #00ff00;
+}
+
+.status-dot.warning {
+  background: #ffaa00;
+}
+
+.status-dot.error {
+  background: #ff0044;
+}
+
+/* Corner decorations */
+.corner-decoration {
+  position: absolute;
+  width: 40px;
+  height: 40px;
+  border-color: var(--hud-primary);
+  border-style: solid;
+  border-width: 0;
+}
+
+.corner-decoration.top-left {
+  top: 20px;
+  left: 20px;
+  border-top-width: 2px;
+  border-left-width: 2px;
+}
+
+.corner-decoration.top-right {
+  top: 20px;
+  right: 20px;
+  border-top-width: 2px;
+  border-right-width: 2px;
+}
+
+.corner-decoration.bottom-left {
+  bottom: 20px;
+  left: 20px;
+  border-bottom-width: 2px;
+  border-left-width: 2px;
+}
+
+.corner-decoration.bottom-right {
+  bottom: 20px;
+  right: 20px;
+  border-bottom-width: 2px;
+  border-right-width: 2px;
+}
+
+/* Debug overlay for camera */
+.debug-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  pointer-events: none;
+}
+
+.landmark-point {
+  position: absolute;
+  width: 6px;
+  height: 6px;
+  background: var(--hud-accent);
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+}
+
+.landmark-connection {
+  position: absolute;
+  background: var(--hud-primary);
+  height: 2px;
+  transform-origin: left center;
+  opacity: 0.6;
+}
+
+/* Camera feed container */
+.camera-container {
+  position: fixed;
+  bottom: 20px;
+  left: 20px;
+  width: 240px;
+  height: 180px;
+  border: 2px solid var(--hud-border);
+  border-radius: 8px;
+  overflow: hidden;
+  background: #000;
+  z-index: 150;
+}
+
+.camera-container video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transform: scaleX(-1);
+}
+
+.camera-container canvas {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  transform: scaleX(-1);
+}
+
+/* Loading state */
+.loading-spinner {
+  width: 40px;
+  height: 40px;
+  border: 3px solid var(--hud-border);
+  border-top-color: var(--hud-primary);
+  border-radius: 50%;
+  animation: rotate 1s linear infinite;
+}
