@@ -52,17 +52,23 @@ export function Live2DAvatar({
         });
 
         // Initialize Pixi app
+        // Create canvas and add to container FIRST (so parentElement is available)
         const canvas = document.createElement("canvas");
+        canvas.style.position = "absolute";
+        canvas.style.top = "0";
+        canvas.style.left = "0";
+        canvas.style.width = "100%";
+        canvas.style.height = "100%";
+        canvas.style.pointerEvents = "none";
+        
+        // Append canvas to container BEFORE initializing (so resizeTo works)
+        containerRef.current.appendChild(canvas);
+
         const initSuccess = await controller.initialize(canvas);
         if (cancelled) return;
 
         if (!initSuccess) {
           throw new Error("Failed to initialize Live2D controller");
-        }
-
-        // Append canvas to container manually to ensure React doesn't mess with it
-        if (containerRef.current && !containerRef.current.contains(canvas)) {
-          containerRef.current.appendChild(canvas);
         }
 
         // Get model URL
