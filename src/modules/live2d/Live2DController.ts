@@ -209,9 +209,8 @@ export class Live2DController {
     // Set position (center of screen)
     this.updateModelPosition();
 
-    // Enable interaction
-    this.model.interactive = true;
-    this.model.cursor = "pointer";
+    // Note: We don't set interactive=true because it causes compatibility issues
+    // with pixi.js 7.x event system. Interaction is handled via gesture tracking instead.
 
     // Setup mouse tracking if enabled
     if (this.config.followMouse) {
@@ -343,11 +342,13 @@ export class Live2DController {
       (this.targetMouthOpenness - this.mouthOpenness) * lerpFactor;
 
     // Apply to model parameters
-    const coreModel = this.model.internalModel?.coreModel as {
-      getParameterIndex: (name: string) => number;
-      setParameterValueByIndex: (index: number, value: number) => void;
-    } | undefined;
-    
+    const coreModel = this.model.internalModel?.coreModel as
+      | {
+          getParameterIndex: (name: string) => number;
+          setParameterValueByIndex: (index: number, value: number) => void;
+        }
+      | undefined;
+
     if (coreModel) {
       // Try different parameter names for mouth
       const mouthParams = [
@@ -376,11 +377,13 @@ export class Live2DController {
   setBodyAngle(angleX: number, angleY: number, angleZ: number = 0): void {
     if (!this.model) return;
 
-    const coreModel = this.model.internalModel?.coreModel as {
-      getParameterIndex: (name: string) => number;
-      setParameterValueByIndex: (index: number, value: number) => void;
-    } | undefined;
-    
+    const coreModel = this.model.internalModel?.coreModel as
+      | {
+          getParameterIndex: (name: string) => number;
+          setParameterValueByIndex: (index: number, value: number) => void;
+        }
+      | undefined;
+
     if (!coreModel) return;
 
     const bodyParams = [
