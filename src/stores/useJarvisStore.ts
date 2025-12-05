@@ -5,6 +5,7 @@
  * @Description: 介绍文件的作用、文件的入参、出参。
  */
 import { create } from "zustand";
+import type { FaceExpressionData } from "../modules/mediapipe/faceTracker";
 
 // ========================
 // Type Definitions
@@ -36,6 +37,7 @@ export interface GestureCallbacks {
   onSpeakingStart?: () => void;
   onSpeakingEnd?: () => void;
   onHandDetected?: (isLeft: boolean, isRight: boolean) => void;
+  onExpressionUpdate?: (expression: FaceExpressionData) => void;
 }
 
 export interface JarvisState {
@@ -51,6 +53,7 @@ export interface JarvisState {
   // Face tracking state
   isSpeaking: boolean;
   mouthOpenness: number;
+  faceExpression: FaceExpressionData | null;
 
   // UI state
   isMenuOpen: boolean;
@@ -80,6 +83,7 @@ export interface JarvisActions {
   // Face tracking actions
   setIsSpeaking: (speaking: boolean) => void;
   setMouthOpenness: (openness: number) => void;
+  setFaceExpression: (expression: FaceExpressionData | null) => void;
 
   // UI actions
   toggleMenu: () => void;
@@ -104,6 +108,7 @@ export interface JarvisActions {
   triggerSpeakingStart: () => void;
   triggerSpeakingEnd: () => void;
   triggerHandDetected: (isLeft: boolean, isRight: boolean) => void;
+  triggerExpressionUpdate: (expression: FaceExpressionData) => void;
 }
 
 // ========================
@@ -123,6 +128,7 @@ export const useJarvisStore = create<JarvisState & JarvisActions>(
 
     isSpeaking: false,
     mouthOpenness: 0,
+    faceExpression: null,
 
     isMenuOpen: false,
     selectedMenuItem: null,
@@ -147,6 +153,7 @@ export const useJarvisStore = create<JarvisState & JarvisActions>(
     // Face tracking actions
     setIsSpeaking: (speaking) => set({ isSpeaking: speaking }),
     setMouthOpenness: (openness) => set({ mouthOpenness: openness }),
+    setFaceExpression: (expression) => set({ faceExpression: expression }),
 
     // UI actions
     toggleMenu: () => set((state) => ({ isMenuOpen: !state.isMenuOpen })),
@@ -226,6 +233,12 @@ export const useJarvisStore = create<JarvisState & JarvisActions>(
       });
       callbacks.onHandDetected?.(isLeft, isRight);
     },
+
+    triggerExpressionUpdate: (expression) => {
+      const { callbacks } = get();
+      set({ faceExpression: expression });
+      callbacks.onExpressionUpdate?.(expression);
+    },
   })
 );
 
@@ -247,6 +260,7 @@ export const useFaceState = () =>
   useJarvisStore((state) => ({
     isSpeaking: state.isSpeaking,
     mouthOpenness: state.mouthOpenness,
+    faceExpression: state.faceExpression,
   }));
 
 export const useUIState = () =>

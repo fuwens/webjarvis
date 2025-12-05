@@ -3,6 +3,7 @@ import {
   getLive2DController,
   getGestureMapper,
   getLipSyncController,
+  getExpressionMapper,
   AVAILABLE_MODELS,
 } from "../modules/live2d";
 import { useJarvisStore } from "../stores/useJarvisStore";
@@ -100,6 +101,7 @@ export function Live2DAvatar({
 
     const gestureMapper = getGestureMapper();
     const lipSyncController = getLipSyncController();
+    const expressionMapper = getExpressionMapper();
 
     // Subscribe to store changes
     const unsubscribe = useJarvisStore.subscribe((state, prevState) => {
@@ -157,9 +159,16 @@ export function Live2DAvatar({
         }
       }
 
-      // Mouth openness
+      // Mouth openness (legacy - for LipSyncController)
       if (state.mouthOpenness !== prevState.mouthOpenness) {
         lipSyncController.onMouthOpennessUpdate(state.mouthOpenness);
+      }
+
+      // Face expression update - drives Live2D with full face tracking
+      if (state.faceExpression !== prevState.faceExpression) {
+        if (state.faceExpression) {
+          expressionMapper.updateFromFaceData(state.faceExpression);
+        }
       }
     });
 

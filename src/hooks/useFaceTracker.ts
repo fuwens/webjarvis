@@ -46,6 +46,10 @@ export function useFaceTracker(options: UseFaceTrackerOptions = {}) {
         onLandmarksUpdate: () => {
           // Face landmarks for visualization
         },
+        // 新增：完整表情数据回调
+        onExpressionUpdate: (expression) => {
+          store.triggerExpressionUpdate(expression);
+        },
       };
 
       tracker.registerCallbacks(callbacks);

@@ -19,3 +19,9 @@ export {
   getLipSyncController,
   type LipSyncConfig,
 } from "./LipSyncController";
+
+export {
+  ExpressionMapper,
+  getExpressionMapper,
+  type ExpressionMapperConfig,
+} from "./ExpressionMapper";
