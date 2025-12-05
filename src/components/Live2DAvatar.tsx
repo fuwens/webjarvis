@@ -30,25 +30,26 @@ export function Live2DAvatar({
   onReady,
   onError,
 }: Live2DAvatarProps) {
-  const containerRef = useRef<HTMLDivElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const initializedRef = useRef(false);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isReady, setIsReady] = useState(false);
 
   // Initialize Live2D
   useEffect(() => {
+    // Prevent double initialization in StrictMode
+    if (initializedRef.current) return;
+
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    initializedRef.current = true;
     let cancelled = false;
 
     const init = async () => {
-      if (!containerRef.current) return;
-
       setIsLoading(true);
       setError(null);
-
-      // Clear any existing canvas from container
-      while (containerRef.current.firstChild) {
-        containerRef.current.removeChild(containerRef.current.firstChild);
-      }
 
       try {
         // Get or create controller instance
@@ -56,19 +57,6 @@ export function Live2DAvatar({
           scale,
           position,
         });
-
-        // Initialize Pixi app
-        // Create canvas and add to container FIRST (so parentElement is available)
-        const canvas = document.createElement("canvas");
-        canvas.style.position = "absolute";
-        canvas.style.top = "0";
-        canvas.style.left = "0";
-        canvas.style.width = "100%";
-        canvas.style.height = "100%";
-        canvas.style.pointerEvents = "none";
-        
-        // Append canvas to container BEFORE initializing (so resizeTo works)
-        containerRef.current.appendChild(canvas);
 
         const initSuccess = await controller.initialize(canvas);
         if (cancelled) return;
@@ -200,25 +188,20 @@ export function Live2DAvatar({
 
   // Retry function
   const retry = useCallback(() => {
-    setIsLoading(true);
-    setError(null);
-    setIsReady(false);
-
-    // Force reinitialize by destroying the singleton
-    getLive2DController().dispose();
-
-    // Trigger re-render which will call the init effect
-    setTimeout(() => {
-      window.location.reload();
-    }, 100);
+    window.location.reload();
   }, []);
 
   return (
     <div
-      ref={containerRef}
       className="fixed inset-0 pointer-events-none"
       style={{ zIndex: 50 }} // Above Three.js (z-0), below HUD (z-100)
     >
+      {/* React-managed canvas */}
+      <canvas
+        ref={canvasRef}
+        className="absolute inset-0 w-full h-full pointer-events-none"
+      />
+
       {/* Loading overlay - only show if loading AND not ready */}
       {isLoading && !isReady && (
         <div className="absolute inset-0 flex items-center justify-center">
