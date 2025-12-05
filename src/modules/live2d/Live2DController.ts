@@ -118,7 +118,11 @@ export class Live2DController {
     try {
       console.log("[Live2DController] Initializing Pixi Application...");
 
+      // Ensure canvas doesn't receive pointer events
+      view.style.pointerEvents = "none";
+
       // Create Pixi Application (pixi.js 7.x API)
+      // Pass eventMode: 'none' to disable event handling on the application level
       this.app = new PIXI.Application({
         view: view,
         backgroundAlpha: 0, // Transparent background
@@ -126,18 +130,12 @@ export class Live2DController {
         antialias: true,
         resolution: window.devicePixelRatio || 1,
         autoDensity: true,
+        eventMode: "none", // Disable event handling
       });
 
-      // Disable interaction entirely to prevent "isInteractive" errors
-      // PixiJS 7 uses a new EventSystem, but pixi-live2d-display might conflict with it
-      if (this.app.renderer.events) {
-        this.app.renderer.events.autoPreventDefault = false;
-        // Removing the root boundary effectively disables interaction
-        // @ts-expect-error - force disabling interaction
-        this.app.renderer.events.rootBoundary = null;
-        // @ts-expect-error - force disabling interaction
-        this.app.renderer.events.domElement = null;
-      }
+      // Disable stage interactivity
+      this.app.stage.eventMode = "none";
+      this.app.stage.interactiveChildren = false;
 
       this.isInitialized = true;
 
@@ -181,7 +179,8 @@ export class Live2DController {
       });
 
       // Force disable interaction on the model and its children
-      this.model.interactive = false;
+      // PixiJS 7 uses eventMode instead of interactive
+      this.model.eventMode = "none";
       this.model.interactiveChildren = false;
       if (this.model.internalModel) {
         // @ts-expect-error - Internal model properties
@@ -448,15 +447,12 @@ export class Live2DController {
 
   resize(): void {
     if (!this.app || !this.app.view) return;
-    
+
     const view = this.app.view as HTMLCanvasElement;
     const parent = view.parentElement;
     if (!parent) return;
 
-    this.app.renderer.resize(
-      parent.clientWidth,
-      parent.clientHeight
-    );
+    this.app.renderer.resize(parent.clientWidth, parent.clientHeight);
 
     this.updateModelPosition();
   }

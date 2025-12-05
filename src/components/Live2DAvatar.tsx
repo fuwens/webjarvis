@@ -55,7 +55,7 @@ export function Live2DAvatar({
         const canvas = document.createElement("canvas");
         const initSuccess = await controller.initialize(canvas);
         if (cancelled) return;
-        
+
         if (!initSuccess) {
           throw new Error("Failed to initialize Live2D controller");
         }
