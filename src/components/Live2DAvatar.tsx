@@ -38,7 +38,7 @@ export function Live2DAvatar({
   // Initialize Live2D
   useEffect(() => {
     let cancelled = false;
-    
+
     const init = async () => {
       if (!containerRef.current) return;
 
@@ -54,19 +54,20 @@ export function Live2DAvatar({
         // Initialize Pixi app
         const initSuccess = await controller.initialize(containerRef.current);
         if (cancelled) return;
-        
+
         if (!initSuccess) {
           throw new Error("Failed to initialize Live2D controller");
         }
 
         // Get model URL
         const modelUrl =
-          AVAILABLE_MODELS[modelKey as keyof typeof AVAILABLE_MODELS] || modelKey;
+          AVAILABLE_MODELS[modelKey as keyof typeof AVAILABLE_MODELS] ||
+          modelKey;
 
         // Load model
         const loadSuccess = await controller.loadModel(modelUrl);
         if (cancelled) return;
-        
+
         if (!loadSuccess) {
           throw new Error("Failed to load Live2D model");
         }
@@ -184,10 +185,10 @@ export function Live2DAvatar({
     setIsLoading(true);
     setError(null);
     setIsReady(false);
-    
+
     // Force reinitialize by destroying the singleton
     getLive2DController().dispose();
-    
+
     // Trigger re-render which will call the init effect
     setTimeout(() => {
       window.location.reload();

@@ -2,10 +2,13 @@
  * @Author: fuwen
  * @LastEditors: fuwens@163.com
  * @Date: 2025-12-05 14:49:25
- * @Description: 介绍文件的作用、文件的入参、出参。
+ * @Description: Live2D Controller using pixi.js 7.x
  */
 import * as PIXI from "pixi.js";
 import { Live2DModel, MotionPreloadStrategy } from "pixi-live2d-display";
+
+// Ensure window.PIXI is available for internal pixi-live2d-display usage
+(window as any).PIXI = PIXI;
 
 // Register Live2D model to PIXI
 // @ts-expect-error - Type mismatch between pixi.js versions, but works at runtime
@@ -135,7 +138,7 @@ export class Live2DController {
         autoDensity: true,
       });
 
-      // Append canvas to container (pixi 7.x uses .view instead of .canvas)
+      // Append canvas to container
       const canvas = this.app.view as HTMLCanvasElement;
       container.appendChild(canvas);
 
@@ -175,8 +178,7 @@ export class Live2DController {
 
       // Remove existing model
       if (this.model) {
-        // @ts-expect-error - Type mismatch between pixi versions
-        this.app.stage.removeChild(this.model);
+        this.app.stage.removeChild(this.model as any);
         this.model.destroy();
         this.model = null;
       }
@@ -184,11 +186,11 @@ export class Live2DController {
       // Load new model
       this.model = await Live2DModel.from(path, {
         motionPreload: MotionPreloadStrategy.IDLE,
+        autoInteract: false, // Disable built-in interaction to prevent errors
       });
 
       // Add to stage
-      // @ts-expect-error - Type mismatch between pixi versions
-      this.app.stage.addChild(this.model);
+      this.app.stage.addChild(this.model as any);
 
       // Configure model
       this.configureModel();
@@ -241,7 +243,8 @@ export class Live2DController {
     if (!this.app) return;
 
     const canvas = this.app.view as HTMLCanvasElement;
-    canvas.addEventListener("mousemove", (e: MouseEvent) => {
+    // Use pointer events for better compatibility
+    canvas.addEventListener("pointermove", (e: PointerEvent) => {
       if (!this.config.followMouse || !this.model) return;
 
       const rect = canvas.getBoundingClientRect();
@@ -484,6 +487,10 @@ export class Live2DController {
     }
 
     if (this.app) {
+      const canvas = this.app.view as HTMLCanvasElement;
+      if (canvas && canvas.parentNode) {
+        canvas.parentNode.removeChild(canvas);
+      }
       this.app.destroy(true, { children: true, texture: true });
       this.app = null;
     }
