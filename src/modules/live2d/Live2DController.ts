@@ -157,6 +157,14 @@ export class Live2DController {
         autoDensity: true,
       });
 
+      // Disable interaction entirely to prevent "isInteractive" errors
+      // PixiJS 7 uses a new EventSystem, but pixi-live2d-display might conflict with it
+      if (this.app.renderer.events) {
+        this.app.renderer.events.autoPreventDefault = false;
+        // Removing the root boundary effectively disables interaction
+        this.app.renderer.events.rootBoundary = null as any;
+      }
+
       // Disable interaction manager to prevent compatibility issues
       // We handle interactions manually via DOM events and GestureMapper
       this.app.renderer.events.autoPreventDefault = false;
@@ -212,6 +220,14 @@ export class Live2DController {
         motionPreload: MotionPreloadStrategy.IDLE,
         autoInteract: false, // Disable built-in interaction to prevent errors
       });
+
+      // Force disable interaction on the model and its children
+      this.model.interactive = false;
+      this.model.interactiveChildren = false;
+      if (this.model.internalModel) {
+        // @ts-expect-error - Internal model properties
+        this.model.internalModel.hitAreas = []; 
+      }
 
       // Add to stage
       this.app.stage.addChild(this.model as any);
