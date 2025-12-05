@@ -1,9 +1,3 @@
-/*
- * @Author: fuwen
- * @LastEditors: fuwens@163.com
- * @Date: 2025-12-05 14:50:49
- * @Description: 介绍文件的作用、文件的入参、出参。
- */
 import { useEffect, useRef, useState, useCallback } from "react";
 import {
   getLive2DController,
@@ -37,17 +31,17 @@ export function Live2DAvatar({
   onError,
 }: Live2DAvatarProps) {
   const containerRef = useRef<HTMLDivElement>(null);
+  const isInitializedRef = useRef(false);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isReady, setIsReady] = useState(false);
 
-  // Get store for subscribing to gesture/speech events
-  const store = useJarvisStore();
-
   // Initialize Live2D
   const initialize = useCallback(async () => {
     if (!containerRef.current) return;
-
+    if (isInitializedRef.current) return; // Prevent double initialization
+    
+    isInitializedRef.current = true;
     setIsLoading(true);
     setError(null);
 
@@ -84,6 +78,7 @@ export function Live2DAvatar({
         err instanceof Error ? err.message : "Unknown error occurred";
       setError(errorMessage);
       setIsLoading(false);
+      isInitializedRef.current = false; // Allow retry
       onError?.(err instanceof Error ? err : new Error(errorMessage));
     }
   }, [modelKey, scale, position, onReady, onError]);
@@ -176,11 +171,6 @@ export function Live2DAvatar({
   // Initialize on mount
   useEffect(() => {
     initialize();
-
-    return () => {
-      // Cleanup is handled by the singleton, don't destroy on unmount
-      // to prevent issues with React strict mode
-    };
   }, [initialize]);
 
   return (
@@ -189,8 +179,8 @@ export function Live2DAvatar({
       className="fixed inset-0 pointer-events-none"
       style={{ zIndex: 50 }} // Above Three.js (z-0), below HUD (z-100)
     >
-      {/* Loading overlay */}
-      {isLoading && (
+      {/* Loading overlay - only show if loading AND not ready */}
+      {isLoading && !isReady && (
         <div className="absolute inset-0 flex items-center justify-center">
           <div className="flex flex-col items-center gap-3">
             <div className="loading-spinner" />
@@ -208,21 +198,14 @@ export function Live2DAvatar({
             <p className="text-xs text-red-400">Live2D 加载失败</p>
             <p className="text-[10px] text-red-400/70 mt-1">{error}</p>
             <button
-              onClick={initialize}
+              onClick={() => {
+                isInitializedRef.current = false;
+                initialize();
+              }}
               className="mt-2 px-3 py-1 text-[10px] border border-[var(--hud-border)] hover:bg-[var(--hud-glow)] transition-colors pointer-events-auto"
             >
               重试
             </button>
-          </div>
-        </div>
-      )}
-
-      {/* Ready indicator */}
-      {isReady && !isLoading && (
-        <div className="absolute bottom-40 left-1/2 -translate-x-1/2">
-          <div className="status-indicator">
-            <div className="status-dot active" />
-            <span className="text-[10px] opacity-70">Live2D</span>
           </div>
         </div>
       )}
