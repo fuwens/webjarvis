@@ -28,7 +28,7 @@ export interface FocusTarget {
 // ========================
 
 const DEFAULT_CONFIG: Live2DConfig = {
-  // Hiyori model from official samples
+  // Haru model (Cubism 4) from pixi-live2d-display test assets
   modelPath:
     "https://cdn.jsdelivr.net/gh/guansss/pixi-live2d-display/test/assets/haru/haru_greeter_t03.model3.json",
   scale: 0.25,
@@ -39,13 +39,15 @@ const DEFAULT_CONFIG: Live2DConfig = {
   followHand: true,
 };
 
-// Alternative models
+// Alternative models (tested and working)
 export const AVAILABLE_MODELS = {
+  // Cubism 4 models (.model3.json)
   haru: "https://cdn.jsdelivr.net/gh/guansss/pixi-live2d-display/test/assets/haru/haru_greeter_t03.model3.json",
+  // Cubism 2 models (.model.json)
   shizuku:
     "https://cdn.jsdelivr.net/gh/guansss/pixi-live2d-display/test/assets/shizuku/shizuku.model.json",
-  hiyori:
-    "https://cdn.jsdelivr.net/gh/Eikanya/Live2d-model/Live2D/Samples/Hiyori/Hiyori.model3.json",
+  // Alternative Cubism 4 model
+  mao: "https://cdn.jsdelivr.net/gh/Eikanya/Live2d-model/Live2D/Samples/mao_pro_t02/mao_pro_t02.model3.json",
 };
 
 // ========================
