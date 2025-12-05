@@ -4,6 +4,7 @@ import {
   getGestureMapper,
   getLipSyncController,
   AVAILABLE_MODELS,
+  Live2DController,
 } from "../modules/live2d";
 import { useJarvisStore } from "../stores/useJarvisStore";
 
@@ -25,8 +26,8 @@ interface Live2DAvatarProps {
 
 export function Live2DAvatar({
   modelKey = "haru",
-  scale = 0.15,
-  position = { x: 0.5, y: 0.75 },
+  scale = 0.1,
+  position = { x: 0.5, y: 0.85 },
   onReady,
   onError,
 }: Live2DAvatarProps) {
@@ -44,6 +45,14 @@ export function Live2DAvatar({
 
       setIsLoading(true);
       setError(null);
+
+      // Clear any existing canvas from container
+      while (containerRef.current.firstChild) {
+        containerRef.current.removeChild(containerRef.current.firstChild);
+      }
+
+      // Destroy previous instance to ensure fresh config
+      Live2DController.destroyInstance();
 
       try {
         const controller = getLive2DController({

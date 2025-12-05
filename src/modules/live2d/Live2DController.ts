@@ -41,8 +41,8 @@ const DEFAULT_CONFIG: Live2DConfig = {
   // Haru model (Cubism 4) from pixi-live2d-display test assets
   modelPath:
     "https://cdn.jsdelivr.net/gh/guansss/pixi-live2d-display/test/assets/haru/haru_greeter_t03.model3.json",
-  scale: 0.15,
-  position: { x: 0.5, y: 0.75 },
+  scale: 0.1,
+  position: { x: 0.5, y: 0.85 },
   idleMotionGroup: "Idle",
   lipSyncEnabled: true,
   followMouse: true,
