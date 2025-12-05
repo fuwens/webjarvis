@@ -41,8 +41,8 @@ const DEFAULT_CONFIG: Live2DConfig = {
   // Haru model (Cubism 4) from pixi-live2d-display test assets
   modelPath:
     "https://cdn.jsdelivr.net/gh/guansss/pixi-live2d-display/test/assets/haru/haru_greeter_t03.model3.json",
-  scale: 0.25,
-  position: { x: 0.5, y: 0.6 },
+  scale: 0.15,
+  position: { x: 0.5, y: 0.75 },
   idleMotionGroup: "Idle",
   lipSyncEnabled: true,
   followMouse: true,
@@ -94,6 +94,9 @@ export class Live2DController {
   static getInstance(config?: Partial<Live2DConfig>): Live2DController {
     if (!Live2DController.instance) {
       Live2DController.instance = new Live2DController(config);
+    } else if (config) {
+      // Update config if instance already exists
+      Live2DController.instance.updateConfig(config);
     }
     return Live2DController.instance;
   }
@@ -103,6 +106,10 @@ export class Live2DController {
       Live2DController.instance.dispose();
       Live2DController.instance = null;
     }
+  }
+
+  updateConfig(config: Partial<Live2DConfig>): void {
+    this.config = { ...this.config, ...config };
   }
 
   // ========================
