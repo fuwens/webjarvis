@@ -358,4 +358,3 @@ export function getGestureMapper(
 ): GestureMapper {
   return GestureMapper.getInstance(config);
 }
-

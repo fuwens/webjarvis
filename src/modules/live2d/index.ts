@@ -19,4 +19,3 @@ export {
   getLipSyncController,
   type LipSyncConfig,
 } from "./LipSyncController";
-

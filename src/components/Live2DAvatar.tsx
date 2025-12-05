@@ -1,3 +1,9 @@
+/*
+ * @Author: fuwen
+ * @LastEditors: fuwens@163.com
+ * @Date: 2025-12-05 14:50:49
+ * @Description: 介绍文件的作用、文件的入参、出参。
+ */
 import { useEffect, useRef, useState, useCallback } from "react";
 import {
   getLive2DController,
@@ -223,4 +229,3 @@ export function Live2DAvatar({
     </div>
   );
 }
-

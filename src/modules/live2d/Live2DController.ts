@@ -1,3 +1,9 @@
+/*
+ * @Author: fuwen
+ * @LastEditors: fuwens@163.com
+ * @Date: 2025-12-05 14:49:25
+ * @Description: 介绍文件的作用、文件的入参、出参。
+ */
 import * as PIXI from "pixi.js";
 import { Live2DModel, MotionPreloadStrategy } from "pixi-live2d-display";
 
@@ -475,4 +481,3 @@ export function getLive2DController(
 ): Live2DController {
   return Live2DController.getInstance(config);
 }
-

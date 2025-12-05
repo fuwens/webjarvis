@@ -71,7 +71,9 @@ export class LipSyncController {
     this.isSpeaking = true;
     this.attentiveStartTime = Date.now();
 
-    console.log("[LipSyncController] Speaking started - entering attentive mode");
+    console.log(
+      "[LipSyncController] Speaking started - entering attentive mode"
+    );
 
     // Enter attentive pose
     if (this.config.attentivePoseEnabled) {
@@ -238,4 +240,3 @@ export function getLipSyncController(
 ): LipSyncController {
   return LipSyncController.getInstance(config);
 }
-
