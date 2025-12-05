@@ -1,13 +1,15 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { JarvisScene } from "./components/JarvisScene";
 import { HudOverlay } from "./components/HudOverlay";
 import { SideMenu } from "./components/SideMenu";
 import { CameraFeed } from "./components/CameraFeed";
+import { Live2DAvatar } from "./components/Live2DAvatar";
 import { useJarvisStore } from "./stores/useJarvisStore";
 import { getInteractionController } from "./modules/threejs/interactionController";
 
 function App() {
   const { registerCallbacks, isLoading } = useJarvisStore();
+  const [live2dReady, setLive2dReady] = useState(false);
 
   // Register interaction controller callbacks
   useEffect(() => {
@@ -44,16 +46,30 @@ function App() {
 
   return (
     <div className="relative w-full h-screen overflow-hidden bg-[#000810]">
-      {/* Three.js particle scene (background) */}
+      {/* Three.js particle scene (background, z-index: 0) */}
       <JarvisScene />
 
-      {/* HUD overlay */}
+      {/* Live2D Avatar (middle layer, z-index: 50) */}
+      <Live2DAvatar
+        modelKey="haru"
+        scale={0.3}
+        position={{ x: 0.5, y: 0.7 }}
+        onReady={() => {
+          setLive2dReady(true);
+          console.log("[App] Live2D Avatar ready");
+        }}
+        onError={(err) => {
+          console.error("[App] Live2D error:", err);
+        }}
+      />
+
+      {/* HUD overlay (z-index: 100) */}
       <HudOverlay />
 
-      {/* Side menu */}
+      {/* Side menu (z-index: 200) */}
       <SideMenu />
 
-      {/* Camera feed (bottom-left corner) */}
+      {/* Camera feed (bottom-left corner, z-index: 150) */}
       <CameraFeed />
 
       {/* Global loading overlay */}
@@ -67,6 +83,11 @@ function App() {
             <div className="text-[var(--hud-text)] text-xs opacity-60">
               正在加载 AI 模型和摄像头
             </div>
+            {live2dReady && (
+              <div className="text-[var(--hud-accent)] text-xs">
+                ✓ Live2D 虚拟角色已加载
+              </div>
+            )}
           </div>
         </div>
       )}

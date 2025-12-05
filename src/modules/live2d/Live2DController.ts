@@ -1,0 +1,476 @@
+import * as PIXI from "pixi.js";
+import { Live2DModel, MotionPreloadStrategy } from "pixi-live2d-display";
+
+// Register Live2D model to PIXI
+Live2DModel.registerTicker(PIXI.Ticker);
+
+// ========================
+// Type Definitions
+// ========================
+
+export interface Live2DConfig {
+  modelPath: string;
+  scale: number;
+  position: { x: number; y: number };
+  idleMotionGroup: string;
+  lipSyncEnabled: boolean;
+  followMouse: boolean;
+  followHand: boolean;
+}
+
+export interface FocusTarget {
+  x: number; // -1 to 1 (left to right)
+  y: number; // -1 to 1 (bottom to top)
+}
+
+// ========================
+// Default Configuration
+// ========================
+
+const DEFAULT_CONFIG: Live2DConfig = {
+  // Hiyori model from official samples
+  modelPath:
+    "https://cdn.jsdelivr.net/gh/guansss/pixi-live2d-display/test/assets/haru/haru_greeter_t03.model3.json",
+  scale: 0.25,
+  position: { x: 0.5, y: 0.6 },
+  idleMotionGroup: "Idle",
+  lipSyncEnabled: true,
+  followMouse: true,
+  followHand: true,
+};
+
+// Alternative models
+export const AVAILABLE_MODELS = {
+  haru: "https://cdn.jsdelivr.net/gh/guansss/pixi-live2d-display/test/assets/haru/haru_greeter_t03.model3.json",
+  shizuku:
+    "https://cdn.jsdelivr.net/gh/guansss/pixi-live2d-display/test/assets/shizuku/shizuku.model.json",
+  hiyori:
+    "https://cdn.jsdelivr.net/gh/Eikanya/Live2d-model/Live2D/Samples/Hiyori/Hiyori.model3.json",
+};
+
+// ========================
+// Live2D Controller Class (Singleton)
+// ========================
+
+export class Live2DController {
+  private static instance: Live2DController | null = null;
+
+  private app: PIXI.Application | null = null;
+  private model: Live2DModel | null = null;
+  private config: Live2DConfig;
+  private container: HTMLElement | null = null;
+
+  // State
+  private isInitialized = false;
+  private isModelLoaded = false;
+  private currentFocus: FocusTarget = { x: 0, y: 0 };
+  private targetFocus: FocusTarget = { x: 0, y: 0 };
+  private mouthOpenness = 0;
+  private targetMouthOpenness = 0;
+
+  // Animation
+  private animationId: number | null = null;
+  private lastTime = 0;
+
+  // ========================
+  // Singleton
+  // ========================
+
+  private constructor(config: Partial<Live2DConfig> = {}) {
+    this.config = { ...DEFAULT_CONFIG, ...config };
+  }
+
+  static getInstance(config?: Partial<Live2DConfig>): Live2DController {
+    if (!Live2DController.instance) {
+      Live2DController.instance = new Live2DController(config);
+    }
+    return Live2DController.instance;
+  }
+
+  static destroyInstance(): void {
+    if (Live2DController.instance) {
+      Live2DController.instance.dispose();
+      Live2DController.instance = null;
+    }
+  }
+
+  // ========================
+  // Initialization
+  // ========================
+
+  async initialize(container: HTMLElement): Promise<boolean> {
+    if (this.isInitialized) {
+      console.log("[Live2DController] Already initialized");
+      return true;
+    }
+
+    this.container = container;
+
+    try {
+      console.log("[Live2DController] Initializing Pixi Application...");
+
+      // Create Pixi Application
+      this.app = new PIXI.Application();
+
+      await this.app.init({
+        backgroundAlpha: 0, // Transparent background
+        resizeTo: container,
+        antialias: true,
+        resolution: window.devicePixelRatio || 1,
+        autoDensity: true,
+      });
+
+      // Append canvas to container
+      container.appendChild(this.app.canvas);
+
+      // Set canvas style
+      this.app.canvas.style.position = "absolute";
+      this.app.canvas.style.top = "0";
+      this.app.canvas.style.left = "0";
+      this.app.canvas.style.pointerEvents = "none";
+
+      this.isInitialized = true;
+
+      // Start animation loop
+      this.startAnimationLoop();
+
+      console.log("[Live2DController] Pixi Application initialized");
+      return true;
+    } catch (error) {
+      console.error("[Live2DController] Initialization failed:", error);
+      return false;
+    }
+  }
+
+  // ========================
+  // Model Loading
+  // ========================
+
+  async loadModel(modelPath?: string): Promise<boolean> {
+    if (!this.app) {
+      console.error("[Live2DController] App not initialized");
+      return false;
+    }
+
+    const path = modelPath || this.config.modelPath;
+
+    try {
+      console.log("[Live2DController] Loading model:", path);
+
+      // Remove existing model
+      if (this.model) {
+        this.app.stage.removeChild(this.model);
+        this.model.destroy();
+        this.model = null;
+      }
+
+      // Load new model
+      this.model = await Live2DModel.from(path, {
+        motionPreload: MotionPreloadStrategy.IDLE,
+      });
+
+      // Add to stage
+      this.app.stage.addChild(this.model);
+
+      // Configure model
+      this.configureModel();
+
+      this.isModelLoaded = true;
+      console.log("[Live2DController] Model loaded successfully");
+
+      // Play idle motion
+      this.playIdleMotion();
+
+      return true;
+    } catch (error) {
+      console.error("[Live2DController] Failed to load model:", error);
+      return false;
+    }
+  }
+
+  private configureModel(): void {
+    if (!this.model || !this.app) return;
+
+    const { scale, position } = this.config;
+
+    // Set scale
+    this.model.scale.set(scale);
+
+    // Set position (center of screen)
+    this.updateModelPosition();
+
+    // Enable interaction
+    this.model.interactive = true;
+    this.model.cursor = "pointer";
+
+    // Setup mouse tracking if enabled
+    if (this.config.followMouse) {
+      this.setupMouseTracking();
+    }
+  }
+
+  private updateModelPosition(): void {
+    if (!this.model || !this.app) return;
+
+    const { position } = this.config;
+    this.model.x = this.app.screen.width * position.x;
+    this.model.y = this.app.screen.height * position.y;
+
+    // Anchor point at center-bottom
+    this.model.anchor.set(0.5, 0.5);
+  }
+
+  private setupMouseTracking(): void {
+    if (!this.app) return;
+
+    this.app.canvas.addEventListener("mousemove", (e: MouseEvent) => {
+      if (!this.config.followMouse || !this.model) return;
+
+      const rect = this.app!.canvas.getBoundingClientRect();
+      const x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+      const y = ((e.clientY - rect.top) / rect.height) * 2 - 1;
+
+      this.setTargetFocus(x, -y);
+    });
+  }
+
+  // ========================
+  // Focus Control (Eye/Head Tracking)
+  // ========================
+
+  setTargetFocus(x: number, y: number): void {
+    // Clamp values to -1 to 1
+    this.targetFocus.x = Math.max(-1, Math.min(1, x));
+    this.targetFocus.y = Math.max(-1, Math.min(1, y));
+  }
+
+  setFocusFromScreenCoords(screenX: number, screenY: number): void {
+    if (!this.app) return;
+
+    const x = (screenX / window.innerWidth) * 2 - 1;
+    const y = (screenY / window.innerHeight) * 2 - 1;
+
+    this.setTargetFocus(x, -y);
+  }
+
+  private updateFocus(deltaTime: number): void {
+    if (!this.model) return;
+
+    // Smooth interpolation (lerp)
+    const lerpFactor = 1 - Math.pow(0.1, deltaTime);
+    this.currentFocus.x +=
+      (this.targetFocus.x - this.currentFocus.x) * lerpFactor;
+    this.currentFocus.y +=
+      (this.targetFocus.y - this.currentFocus.y) * lerpFactor;
+
+    // Apply to model - focus method handles the parameter mapping
+    this.model.focus(this.currentFocus.x, this.currentFocus.y);
+  }
+
+  // ========================
+  // Motion Control
+  // ========================
+
+  playMotion(group: string, index: number = 0, priority: number = 2): void {
+    if (!this.model) return;
+
+    try {
+      this.model.motion(group, index, priority);
+      console.log(`[Live2DController] Playing motion: ${group}[${index}]`);
+    } catch (error) {
+      console.warn(`[Live2DController] Motion not found: ${group}[${index}]`);
+    }
+  }
+
+  playIdleMotion(): void {
+    this.playMotion(this.config.idleMotionGroup, 0, 1);
+  }
+
+  // Common motion helpers
+  tap(): void {
+    this.playMotion("Tap", 0, 3);
+  }
+
+  flick(): void {
+    this.playMotion("Flick", 0, 3);
+  }
+
+  shake(): void {
+    this.playMotion("Shake", 0, 3);
+  }
+
+  // ========================
+  // Expression Control
+  // ========================
+
+  setExpression(expressionId: string | number): void {
+    if (!this.model) return;
+
+    try {
+      this.model.expression(expressionId);
+      console.log(`[Live2DController] Set expression: ${expressionId}`);
+    } catch (error) {
+      console.warn(`[Live2DController] Expression not found: ${expressionId}`);
+    }
+  }
+
+  // ========================
+  // Lip Sync (Mouth Control)
+  // ========================
+
+  setMouthOpenness(value: number): void {
+    // Clamp between 0 and 1
+    this.targetMouthOpenness = Math.max(0, Math.min(1, value));
+  }
+
+  private updateMouth(deltaTime: number): void {
+    if (!this.model || !this.config.lipSyncEnabled) return;
+
+    // Smooth interpolation
+    const lerpFactor = 1 - Math.pow(0.05, deltaTime);
+    this.mouthOpenness +=
+      (this.targetMouthOpenness - this.mouthOpenness) * lerpFactor;
+
+    // Apply to model parameters
+    const coreModel = this.model.internalModel?.coreModel;
+    if (coreModel) {
+      // Try different parameter names for mouth
+      const mouthParams = [
+        "ParamMouthOpenY",
+        "PARAM_MOUTH_OPEN_Y",
+        "ParamMouthOpen",
+      ];
+      for (const param of mouthParams) {
+        try {
+          const paramIndex = coreModel.getParameterIndex(param);
+          if (paramIndex >= 0) {
+            coreModel.setParameterValueByIndex(paramIndex, this.mouthOpenness);
+            break;
+          }
+        } catch {
+          // Parameter not found, try next
+        }
+      }
+    }
+  }
+
+  // ========================
+  // Body Control (for gestures)
+  // ========================
+
+  setBodyAngle(angleX: number, angleY: number, angleZ: number = 0): void {
+    if (!this.model) return;
+
+    const coreModel = this.model.internalModel?.coreModel;
+    if (!coreModel) return;
+
+    const bodyParams = [
+      { name: "ParamBodyAngleX", value: angleX },
+      { name: "ParamBodyAngleY", value: angleY },
+      { name: "ParamBodyAngleZ", value: angleZ },
+    ];
+
+    bodyParams.forEach(({ name, value }) => {
+      try {
+        const paramIndex = coreModel.getParameterIndex(name);
+        if (paramIndex >= 0) {
+          coreModel.setParameterValueByIndex(paramIndex, value);
+        }
+      } catch {
+        // Parameter not found
+      }
+    });
+  }
+
+  // ========================
+  // Animation Loop
+  // ========================
+
+  private startAnimationLoop(): void {
+    const animate = (currentTime: number) => {
+      const deltaTime = (currentTime - this.lastTime) / 1000;
+      this.lastTime = currentTime;
+
+      if (deltaTime > 0 && deltaTime < 1) {
+        this.updateFocus(deltaTime);
+        this.updateMouth(deltaTime);
+      }
+
+      this.animationId = requestAnimationFrame(animate);
+    };
+
+    this.lastTime = performance.now();
+    this.animationId = requestAnimationFrame(animate);
+  }
+
+  private stopAnimationLoop(): void {
+    if (this.animationId) {
+      cancelAnimationFrame(this.animationId);
+      this.animationId = null;
+    }
+  }
+
+  // ========================
+  // Resize Handler
+  // ========================
+
+  resize(): void {
+    if (!this.app || !this.container) return;
+
+    this.app.renderer.resize(
+      this.container.clientWidth,
+      this.container.clientHeight
+    );
+
+    this.updateModelPosition();
+  }
+
+  // ========================
+  // Getters
+  // ========================
+
+  getModel(): Live2DModel | null {
+    return this.model;
+  }
+
+  isReady(): boolean {
+    return this.isInitialized && this.isModelLoaded;
+  }
+
+  getApp(): PIXI.Application | null {
+    return this.app;
+  }
+
+  // ========================
+  // Cleanup
+  // ========================
+
+  dispose(): void {
+    this.stopAnimationLoop();
+
+    if (this.model) {
+      this.model.destroy();
+      this.model = null;
+    }
+
+    if (this.app) {
+      this.app.destroy(true, { children: true, texture: true });
+      this.app = null;
+    }
+
+    this.isInitialized = false;
+    this.isModelLoaded = false;
+    console.log("[Live2DController] Disposed");
+  }
+}
+
+// ========================
+// Export singleton accessor
+// ========================
+
+export function getLive2DController(
+  config?: Partial<Live2DConfig>
+): Live2DController {
+  return Live2DController.getInstance(config);
+}
+
