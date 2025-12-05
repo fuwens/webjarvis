@@ -38,14 +38,12 @@ export function Live2DAvatar({
 
   // Initialize Live2D
   useEffect(() => {
-    // Prevent double initialization in StrictMode
-    if (initializedRef.current) return;
-
     const canvas = canvasRef.current;
     if (!canvas) return;
 
+    // Prevent double initialization
+    if (initializedRef.current) return;
     initializedRef.current = true;
-    let cancelled = false;
 
     const init = async () => {
       setIsLoading(true);
@@ -59,7 +57,6 @@ export function Live2DAvatar({
         });
 
         const initSuccess = await controller.initialize(canvas);
-        if (cancelled) return;
 
         if (!initSuccess) {
           throw new Error("Failed to initialize Live2D controller");
@@ -72,7 +69,6 @@ export function Live2DAvatar({
 
         // Load model
         const loadSuccess = await controller.loadModel(modelUrl);
-        if (cancelled) return;
 
         if (!loadSuccess) {
           throw new Error("Failed to load Live2D model");
@@ -84,7 +80,6 @@ export function Live2DAvatar({
 
         console.log("[Live2DAvatar] Ready");
       } catch (err) {
-        if (cancelled) return;
         console.error("[Live2DAvatar] Initialization error:", err);
         const errorMessage =
           err instanceof Error ? err.message : "Unknown error occurred";
@@ -96,10 +91,8 @@ export function Live2DAvatar({
 
     init();
 
-    return () => {
-      cancelled = true;
-    };
-  }, [modelKey, scale, position, onReady, onError]);
+    // No cleanup - let the singleton handle its own lifecycle
+  }, []);
 
   // Connect to store events
   useEffect(() => {
