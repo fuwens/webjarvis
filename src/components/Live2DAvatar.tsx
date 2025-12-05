@@ -4,7 +4,6 @@ import {
   getGestureMapper,
   getLipSyncController,
   AVAILABLE_MODELS,
-  Live2DController,
 } from "../modules/live2d";
 import { useJarvisStore } from "../stores/useJarvisStore";
 
@@ -51,10 +50,8 @@ export function Live2DAvatar({
         containerRef.current.removeChild(containerRef.current.firstChild);
       }
 
-      // Destroy previous instance to ensure fresh config
-      Live2DController.destroyInstance();
-
       try {
+        // Get or create controller instance
         const controller = getLive2DController({
           scale,
           position,
