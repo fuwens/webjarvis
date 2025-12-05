@@ -110,6 +110,10 @@ export class Live2DController {
 
   updateConfig(config: Partial<Live2DConfig>): void {
     this.config = { ...this.config, ...config };
+    // Re-apply config if model is already loaded
+    if (this.isModelLoaded && this.model) {
+      this.configureModel();
+    }
   }
 
   // ========================
