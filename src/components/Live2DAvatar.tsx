@@ -25,8 +25,8 @@ interface Live2DAvatarProps {
 
 export function Live2DAvatar({
   modelKey = "haru",
-  scale = 0.1,
-  position = { x: 0.5, y: 0.85 },
+  scale = 0.08,
+  position = { x: 0.5, y: 0.9 },
   onReady,
   onError,
 }: Live2DAvatarProps) {
