@@ -111,17 +111,34 @@ export class Live2DController {
   // ========================
 
   async initialize(container: HTMLElement): Promise<boolean> {
+    // Always clear previous canvas from container to prevent ghosting
+    while (container.firstChild) {
+      container.removeChild(container.firstChild);
+    }
+
     // Check if already initialized and canvas is still in DOM
     if (this.isInitialized && this.app) {
+      // Re-initialization logic: if instance exists but container changed
       const canvas = this.app.view as HTMLCanvasElement;
-      if (canvas && document.body.contains(canvas)) {
-        console.log("[Live2DController] Already initialized");
+      if (!document.body.contains(canvas)) {
+        // Re-attach existing canvas
+        container.appendChild(canvas);
+        // Update resize target
+        this.app.resizeTo = container;
+        this.app.resize();
+        console.log("[Live2DController] Reattached existing canvas");
         return true;
-      } else {
-        // Canvas was removed, need to reinitialize
-        console.log("[Live2DController] Reinitializing (canvas was removed)");
-        this.dispose();
+      } else if (canvas.parentElement !== container) {
+        // Canvas is in another container, move it
+        container.appendChild(canvas);
+        this.app.resizeTo = container;
+        this.app.resize();
+        console.log("[Live2DController] Moved canvas to new container");
+        return true;
       }
+      
+      console.log("[Live2DController] Already initialized in correct container");
+      return true;
     }
 
     this.container = container;
