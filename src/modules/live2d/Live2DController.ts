@@ -8,6 +8,7 @@ import * as PIXI from "pixi.js";
 import { Live2DModel, MotionPreloadStrategy } from "pixi-live2d-display";
 
 // Register Live2D model to PIXI
+// @ts-expect-error - Type mismatch between pixi.js versions, but works at runtime
 Live2DModel.registerTicker(PIXI.Ticker);
 
 // ========================
@@ -117,10 +118,8 @@ export class Live2DController {
     try {
       console.log("[Live2DController] Initializing Pixi Application...");
 
-      // Create Pixi Application
-      this.app = new PIXI.Application();
-
-      await this.app.init({
+      // Create Pixi Application (pixi.js 7.x API)
+      this.app = new PIXI.Application({
         backgroundAlpha: 0, // Transparent background
         resizeTo: container,
         antialias: true,
@@ -128,14 +127,15 @@ export class Live2DController {
         autoDensity: true,
       });
 
-      // Append canvas to container
-      container.appendChild(this.app.canvas);
+      // Append canvas to container (pixi 7.x uses .view instead of .canvas)
+      const canvas = this.app.view as HTMLCanvasElement;
+      container.appendChild(canvas);
 
       // Set canvas style
-      this.app.canvas.style.position = "absolute";
-      this.app.canvas.style.top = "0";
-      this.app.canvas.style.left = "0";
-      this.app.canvas.style.pointerEvents = "none";
+      canvas.style.position = "absolute";
+      canvas.style.top = "0";
+      canvas.style.left = "0";
+      canvas.style.pointerEvents = "none";
 
       this.isInitialized = true;
 
@@ -167,6 +167,7 @@ export class Live2DController {
 
       // Remove existing model
       if (this.model) {
+        // @ts-expect-error - Type mismatch between pixi versions
         this.app.stage.removeChild(this.model);
         this.model.destroy();
         this.model = null;
@@ -178,6 +179,7 @@ export class Live2DController {
       });
 
       // Add to stage
+      // @ts-expect-error - Type mismatch between pixi versions
       this.app.stage.addChild(this.model);
 
       // Configure model
@@ -199,7 +201,7 @@ export class Live2DController {
   private configureModel(): void {
     if (!this.model || !this.app) return;
 
-    const { scale, position } = this.config;
+    const { scale } = this.config;
 
     // Set scale
     this.model.scale.set(scale);
@@ -231,10 +233,11 @@ export class Live2DController {
   private setupMouseTracking(): void {
     if (!this.app) return;
 
-    this.app.canvas.addEventListener("mousemove", (e: MouseEvent) => {
+    const canvas = this.app.view as HTMLCanvasElement;
+    canvas.addEventListener("mousemove", (e: MouseEvent) => {
       if (!this.config.followMouse || !this.model) return;
 
-      const rect = this.app!.canvas.getBoundingClientRect();
+      const rect = canvas.getBoundingClientRect();
       const x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
       const y = ((e.clientY - rect.top) / rect.height) * 2 - 1;
 
@@ -340,7 +343,11 @@ export class Live2DController {
       (this.targetMouthOpenness - this.mouthOpenness) * lerpFactor;
 
     // Apply to model parameters
-    const coreModel = this.model.internalModel?.coreModel;
+    const coreModel = this.model.internalModel?.coreModel as {
+      getParameterIndex: (name: string) => number;
+      setParameterValueByIndex: (index: number, value: number) => void;
+    } | undefined;
+    
     if (coreModel) {
       // Try different parameter names for mouth
       const mouthParams = [
@@ -369,7 +376,11 @@ export class Live2DController {
   setBodyAngle(angleX: number, angleY: number, angleZ: number = 0): void {
     if (!this.model) return;
 
-    const coreModel = this.model.internalModel?.coreModel;
+    const coreModel = this.model.internalModel?.coreModel as {
+      getParameterIndex: (name: string) => number;
+      setParameterValueByIndex: (index: number, value: number) => void;
+    } | undefined;
+    
     if (!coreModel) return;
 
     const bodyParams = [
