@@ -108,9 +108,17 @@ export class Live2DController {
   // ========================
 
   async initialize(container: HTMLElement): Promise<boolean> {
-    if (this.isInitialized) {
-      console.log("[Live2DController] Already initialized");
-      return true;
+    // Check if already initialized and canvas is still in DOM
+    if (this.isInitialized && this.app) {
+      const canvas = this.app.view as HTMLCanvasElement;
+      if (canvas && document.body.contains(canvas)) {
+        console.log("[Live2DController] Already initialized");
+        return true;
+      } else {
+        // Canvas was removed, need to reinitialize
+        console.log("[Live2DController] Reinitializing (canvas was removed)");
+        this.dispose();
+      }
     }
 
     this.container = container;

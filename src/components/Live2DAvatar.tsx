@@ -31,56 +31,67 @@ export function Live2DAvatar({
   onError,
 }: Live2DAvatarProps) {
   const containerRef = useRef<HTMLDivElement>(null);
-  const isInitializedRef = useRef(false);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isReady, setIsReady] = useState(false);
 
   // Initialize Live2D
-  const initialize = useCallback(async () => {
-    if (!containerRef.current) return;
-    if (isInitializedRef.current) return; // Prevent double initialization
+  useEffect(() => {
+    let cancelled = false;
     
-    isInitializedRef.current = true;
-    setIsLoading(true);
-    setError(null);
+    const init = async () => {
+      if (!containerRef.current) return;
 
-    try {
-      const controller = getLive2DController({
-        scale,
-        position,
-      });
+      setIsLoading(true);
+      setError(null);
 
-      // Initialize Pixi app
-      const initSuccess = await controller.initialize(containerRef.current);
-      if (!initSuccess) {
-        throw new Error("Failed to initialize Live2D controller");
+      try {
+        const controller = getLive2DController({
+          scale,
+          position,
+        });
+
+        // Initialize Pixi app
+        const initSuccess = await controller.initialize(containerRef.current);
+        if (cancelled) return;
+        
+        if (!initSuccess) {
+          throw new Error("Failed to initialize Live2D controller");
+        }
+
+        // Get model URL
+        const modelUrl =
+          AVAILABLE_MODELS[modelKey as keyof typeof AVAILABLE_MODELS] || modelKey;
+
+        // Load model
+        const loadSuccess = await controller.loadModel(modelUrl);
+        if (cancelled) return;
+        
+        if (!loadSuccess) {
+          throw new Error("Failed to load Live2D model");
+        }
+
+        setIsLoading(false);
+        setIsReady(true);
+        onReady?.();
+
+        console.log("[Live2DAvatar] Ready");
+      } catch (err) {
+        if (cancelled) return;
+        console.error("[Live2DAvatar] Initialization error:", err);
+        const errorMessage =
+          err instanceof Error ? err.message : "Unknown error occurred";
+        setError(errorMessage);
+        setIsLoading(false);
+        onError?.(err instanceof Error ? err : new Error(errorMessage));
       }
+    };
 
-      // Get model URL
-      const modelUrl =
-        AVAILABLE_MODELS[modelKey as keyof typeof AVAILABLE_MODELS] || modelKey;
+    init();
 
-      // Load model
-      const loadSuccess = await controller.loadModel(modelUrl);
-      if (!loadSuccess) {
-        throw new Error("Failed to load Live2D model");
-      }
-
-      setIsLoading(false);
-      setIsReady(true);
-      onReady?.();
-
-      console.log("[Live2DAvatar] Ready");
-    } catch (err) {
-      console.error("[Live2DAvatar] Initialization error:", err);
-      const errorMessage =
-        err instanceof Error ? err.message : "Unknown error occurred";
-      setError(errorMessage);
-      setIsLoading(false);
-      isInitializedRef.current = false; // Allow retry
-      onError?.(err instanceof Error ? err : new Error(errorMessage));
-    }
+    return () => {
+      cancelled = true;
+    };
   }, [modelKey, scale, position, onReady, onError]);
 
   // Connect to store events
@@ -168,10 +179,20 @@ export function Live2DAvatar({
     return () => window.removeEventListener("resize", handleResize);
   }, []);
 
-  // Initialize on mount
-  useEffect(() => {
-    initialize();
-  }, [initialize]);
+  // Retry function
+  const retry = useCallback(() => {
+    setIsLoading(true);
+    setError(null);
+    setIsReady(false);
+    
+    // Force reinitialize by destroying the singleton
+    getLive2DController().dispose();
+    
+    // Trigger re-render which will call the init effect
+    setTimeout(() => {
+      window.location.reload();
+    }, 100);
+  }, []);
 
   return (
     <div
@@ -198,10 +219,7 @@ export function Live2DAvatar({
             <p className="text-xs text-red-400">Live2D 加载失败</p>
             <p className="text-[10px] text-red-400/70 mt-1">{error}</p>
             <button
-              onClick={() => {
-                isInitializedRef.current = false;
-                initialize();
-              }}
+              onClick={retry}
               className="mt-2 px-3 py-1 text-[10px] border border-[var(--hud-border)] hover:bg-[var(--hud-glow)] transition-colors pointer-events-auto"
             >
               重试
