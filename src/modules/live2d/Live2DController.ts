@@ -136,8 +136,10 @@ export class Live2DController {
         console.log("[Live2DController] Moved canvas to new container");
         return true;
       }
-      
-      console.log("[Live2DController] Already initialized in correct container");
+
+      console.log(
+        "[Live2DController] Already initialized in correct container"
+      );
       return true;
     }
 
@@ -154,6 +156,11 @@ export class Live2DController {
         resolution: window.devicePixelRatio || 1,
         autoDensity: true,
       });
+
+      // Disable interaction manager to prevent compatibility issues
+      // We handle interactions manually via DOM events and GestureMapper
+      this.app.renderer.events.autoPreventDefault = false;
+      this.app.renderer.events.domElement = null; // Detach from DOM
 
       // Append canvas to container
       const canvas = this.app.view as HTMLCanvasElement;
