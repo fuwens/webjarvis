@@ -52,11 +52,17 @@ export function Live2DAvatar({
         });
 
         // Initialize Pixi app
-        const initSuccess = await controller.initialize(containerRef.current);
+        const canvas = document.createElement("canvas");
+        const initSuccess = await controller.initialize(canvas);
         if (cancelled) return;
-
+        
         if (!initSuccess) {
           throw new Error("Failed to initialize Live2D controller");
+        }
+
+        // Append canvas to container manually to ensure React doesn't mess with it
+        if (containerRef.current && !containerRef.current.contains(canvas)) {
+          containerRef.current.appendChild(canvas);
         }
 
         // Get model URL

@@ -70,7 +70,6 @@ export class Live2DController {
   private app: PIXI.Application | null = null;
   private model: Live2DModel | null = null;
   private config: Live2DConfig;
-  private container: HTMLElement | null = null;
 
   // State
   private isInitialized = false;
@@ -110,48 +109,20 @@ export class Live2DController {
   // Initialization
   // ========================
 
-  async initialize(container: HTMLElement): Promise<boolean> {
-    // Always clear previous canvas from container to prevent ghosting
-    while (container.firstChild) {
-      container.removeChild(container.firstChild);
-    }
-
-    // Check if already initialized and canvas is still in DOM
+  async initialize(view: HTMLCanvasElement): Promise<boolean> {
     if (this.isInitialized && this.app) {
-      // Re-initialization logic: if instance exists but container changed
-      const canvas = this.app.view as HTMLCanvasElement;
-      if (!document.body.contains(canvas)) {
-        // Re-attach existing canvas
-        container.appendChild(canvas);
-        // Update resize target
-        this.app.resizeTo = container;
-        this.app.resize();
-        console.log("[Live2DController] Reattached existing canvas");
-        return true;
-      } else if (canvas.parentElement !== container) {
-        // Canvas is in another container, move it
-        container.appendChild(canvas);
-        this.app.resizeTo = container;
-        this.app.resize();
-        console.log("[Live2DController] Moved canvas to new container");
-        return true;
-      }
-
-      console.log(
-        "[Live2DController] Already initialized in correct container"
-      );
+      console.log("[Live2DController] Already initialized");
       return true;
     }
-
-    this.container = container;
 
     try {
       console.log("[Live2DController] Initializing Pixi Application...");
 
       // Create Pixi Application (pixi.js 7.x API)
       this.app = new PIXI.Application({
+        view: view,
         backgroundAlpha: 0, // Transparent background
-        resizeTo: container,
+        resizeTo: view.parentElement as HTMLElement,
         antialias: true,
         resolution: window.devicePixelRatio || 1,
         autoDensity: true,
@@ -162,23 +133,11 @@ export class Live2DController {
       if (this.app.renderer.events) {
         this.app.renderer.events.autoPreventDefault = false;
         // Removing the root boundary effectively disables interaction
-        this.app.renderer.events.rootBoundary = null as any;
+        // @ts-expect-error - force disabling interaction
+        this.app.renderer.events.rootBoundary = null;
+        // @ts-expect-error - force disabling interaction
+        this.app.renderer.events.domElement = null;
       }
-
-      // Disable interaction manager to prevent compatibility issues
-      // We handle interactions manually via DOM events and GestureMapper
-      this.app.renderer.events.autoPreventDefault = false;
-      this.app.renderer.events.domElement = null; // Detach from DOM
-
-      // Append canvas to container
-      const canvas = this.app.view as HTMLCanvasElement;
-      container.appendChild(canvas);
-
-      // Set canvas style
-      canvas.style.position = "absolute";
-      canvas.style.top = "0";
-      canvas.style.left = "0";
-      canvas.style.pointerEvents = "none";
 
       this.isInitialized = true;
 
@@ -226,7 +185,7 @@ export class Live2DController {
       this.model.interactiveChildren = false;
       if (this.model.internalModel) {
         // @ts-expect-error - Internal model properties
-        this.model.internalModel.hitAreas = []; 
+        this.model.internalModel.hitAreas = [];
       }
 
       // Add to stage
@@ -488,11 +447,15 @@ export class Live2DController {
   // ========================
 
   resize(): void {
-    if (!this.app || !this.container) return;
+    if (!this.app || !this.app.view) return;
+    
+    const view = this.app.view as HTMLCanvasElement;
+    const parent = view.parentElement;
+    if (!parent) return;
 
     this.app.renderer.resize(
-      this.container.clientWidth,
-      this.container.clientHeight
+      parent.clientWidth,
+      parent.clientHeight
     );
 
     this.updateModelPosition();
@@ -527,10 +490,7 @@ export class Live2DController {
     }
 
     if (this.app) {
-      const canvas = this.app.view as HTMLCanvasElement;
-      if (canvas && canvas.parentNode) {
-        canvas.parentNode.removeChild(canvas);
-      }
+      // Don't remove canvas manually, React handles it
       this.app.destroy(true, { children: true, texture: true });
       this.app = null;
     }
