@@ -316,6 +316,27 @@ export class Live2DController {
     this.playMotion(this.config.idleMotionGroup, 0, 1);
   }
 
+  stopAllMotions(): void {
+    if (!this.model?.internalModel) return;
+    
+    // @ts-expect-error - Internal API
+    const motionManager = this.model.internalModel.motionManager;
+    if (motionManager) {
+      // 停止所有正在播放的动画
+      motionManager.stopAllMotions?.();
+      console.log("[Live2DController] Stopped all motions");
+    }
+  }
+
+  // 启用/禁用表情跟踪模式（禁用时停止Idle动画干扰）
+  setExpressionTrackingMode(enabled: boolean): void {
+    if (enabled) {
+      this.stopAllMotions();
+    } else {
+      this.playIdleMotion();
+    }
+  }
+
   // Common motion helpers
   tap(): void {
     this.playMotion("Tap", 0, 3);

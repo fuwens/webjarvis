@@ -91,6 +91,7 @@ export class ExpressionMapper {
   private lastExpression: FaceExpressionData | null = null;
   private parameterCache: Map<string, number> = new Map();
   private frameCount = 0;
+  private isTrackingActive = false;
 
   // ========================
   // Singleton
@@ -123,6 +124,13 @@ export class ExpressionMapper {
 
   updateFromFaceData(data: FaceExpressionData): void {
     if (!this.config.enabled || !data.faceDetected) {
+      // 如果没有检测到面部，恢复 Idle 动画
+      if (this.isTrackingActive) {
+        const controller = getLive2DController();
+        controller.setExpressionTrackingMode(false);
+        this.isTrackingActive = false;
+        console.log("[ExpressionMapper] Face lost, resuming idle motion");
+      }
       return;
     }
 
@@ -132,6 +140,13 @@ export class ExpressionMapper {
         console.log("[ExpressionMapper] Controller not ready");
       }
       return;
+    }
+
+    // 首次检测到面部时，停止 Idle 动画
+    if (!this.isTrackingActive) {
+      controller.setExpressionTrackingMode(true);
+      this.isTrackingActive = true;
+      console.log("[ExpressionMapper] Face detected, stopping idle motion for tracking");
     }
 
     const model = controller.getModel();
@@ -151,16 +166,39 @@ export class ExpressionMapper {
       return;
     }
 
-    // 日志输出（每60帧一次）
-    if (this.config.debug && this.frameCount % 60 === 0) {
-      console.log("[ExpressionMapper] Face data:", {
-        leftEye: data.leftEyeOpenness.toFixed(2),
-        rightEye: data.rightEyeOpenness.toFixed(2),
-        headX: data.headAngleX.toFixed(1),
-        headY: data.headAngleY.toFixed(1),
-        mouth: data.mouthOpenness.toFixed(2),
+    // 调试：每隔一段时间列出模型结构
+    if (this.config.debug && this.frameCount === 0) {
+      console.log("[ExpressionMapper] Model structure:", {
+        hasCoreModel: !!internalModel.coreModel,
+        hasModel: !!(internalModel as any).model,
+        coreModelType: internalModel.coreModel?.constructor?.name,
+        internalModelKeys: Object.keys(internalModel).slice(0, 20),
       });
+
+      // 尝试列出参数
+      const coreModel = internalModel.coreModel as any;
+      if (coreModel) {
+        console.log("[ExpressionMapper] CoreModel structure:", {
+          hasGetParameterIndex: typeof coreModel.getParameterIndex === "function",
+          hasSetParameterValueByIndex: typeof coreModel.setParameterValueByIndex === "function",
+          has_model: !!coreModel._model,
+          coreModelKeys: Object.keys(coreModel).slice(0, 20),
+        });
+
+        // 列出所有参数
+        if (coreModel._model) {
+          const _model = coreModel._model;
+          const paramCount = _model.getParameterCount?.() ?? 0;
+          const params: string[] = [];
+          for (let i = 0; i < paramCount && i < 30; i++) {
+            const id = _model.getParameterId?.(i);
+            if (id) params.push(id);
+          }
+          console.log("[ExpressionMapper] Available parameters:", params);
+        }
+      }
     }
+
     this.frameCount++;
 
     // 应用各种跟踪 - 直接使用 internalModel
@@ -307,20 +345,56 @@ export class ExpressionMapper {
     const cacheKey = paramNames[0];
     const smoothedValue = this.smoothValue(cacheKey, value);
 
-    // 尝试通过 coreModel 设置参数（Cubism 4）
+    // 方法1: 通过 coreModel 设置参数（Cubism 4）
     const coreModel = internalModel.coreModel;
     if (coreModel) {
       for (const name of paramNames) {
         try {
-          // Cubism 4 API
-          if (typeof coreModel.setParameterValueById === "function") {
-            coreModel.setParameterValueById(name, smoothedValue);
-            return;
+          // Cubism 4 - 使用 _model 直接设置
+          const model = coreModel._model;
+          if (model) {
+            // 尝试找到参数索引
+            const parameterCount = model.getParameterCount?.() ?? 0;
+            for (let i = 0; i < parameterCount; i++) {
+              const paramId = model.getParameterId?.(i);
+              if (paramId === name) {
+                model.setParameterValueByIndex?.(i, smoothedValue);
+                if (this.config.debug && this.frameCount % 120 === 0) {
+                  console.log(`[ExpressionMapper] Set ${name} = ${smoothedValue.toFixed(2)} via _model`);
+                }
+                return;
+              }
+            }
           }
-          // 备选 API
+
+          // 备选: 直接通过 coreModel 设置
           const index = coreModel.getParameterIndex?.(name);
           if (index !== undefined && index >= 0) {
-            coreModel.setParameterValueByIndex(index, smoothedValue);
+            coreModel.setParameterValueByIndex?.(index, smoothedValue);
+            if (this.config.debug && this.frameCount % 120 === 0) {
+              console.log(`[ExpressionMapper] Set ${name}[${index}] = ${smoothedValue.toFixed(2)} via coreModel`);
+            }
+            return;
+          }
+        } catch (e) {
+          // 参数不存在，尝试下一个
+          if (this.config.debug && this.frameCount % 120 === 0) {
+            console.log(`[ExpressionMapper] Failed to set ${name}:`, e);
+          }
+        }
+      }
+    }
+
+    // 方法2: 通过 model 设置参数（Cubism 2）
+    const model = internalModel.model;
+    if (model) {
+      for (const name of paramNames) {
+        try {
+          if (typeof model.setParamFloat === "function") {
+            model.setParamFloat(name, smoothedValue);
+            if (this.config.debug && this.frameCount % 120 === 0) {
+              console.log(`[ExpressionMapper] Set ${name} = ${smoothedValue.toFixed(2)} via model.setParamFloat`);
+            }
             return;
           }
         } catch {
@@ -329,19 +403,24 @@ export class ExpressionMapper {
       }
     }
 
-    // 尝试通过 model（Cubism 2 格式）
-    const model = internalModel.model;
-    if (model) {
+    // 方法3: 尝试通过 internalModel 自身设置 (pixi-live2d-display 内部方法)
+    try {
       for (const name of paramNames) {
-        try {
-          if (typeof model.setParamFloat === "function") {
-            model.setParamFloat(name, smoothedValue);
-            return;
+        if (typeof internalModel.setParameter === "function") {
+          internalModel.setParameter(name, smoothedValue);
+          if (this.config.debug && this.frameCount % 120 === 0) {
+            console.log(`[ExpressionMapper] Set ${name} = ${smoothedValue.toFixed(2)} via internalModel.setParameter`);
           }
-        } catch {
-          // 参数不存在，尝试下一个
+          return;
         }
       }
+    } catch {
+      // 不支持
+    }
+
+    // 如果所有方法都失败了，在调试模式下记录
+    if (this.config.debug && this.frameCount % 600 === 0) {
+      console.warn(`[ExpressionMapper] Could not set parameter: ${paramNames.join(", ")}`);
     }
   }
 

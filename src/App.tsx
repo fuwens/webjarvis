@@ -55,6 +55,7 @@ function App() {
         scale={0.3}
         position={{ x: 0.5, y: 0.7 }}
         debug={true} // 启用调试面板
+        testMode={true} // 启用测试模式 - 用鼠标模拟表情
         onReady={() => {
           setLive2dReady(true);
           console.log("[App] Live2D Avatar ready");

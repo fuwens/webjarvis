@@ -20,6 +20,7 @@ interface Live2DAvatarProps {
   onReady?: () => void;
   onError?: (error: Error) => void;
   debug?: boolean;
+  testMode?: boolean; // 测试模式：用鼠标模拟面部数据
 }
 
 // ========================
@@ -33,6 +34,7 @@ export function Live2DAvatar({
   onReady,
   onError,
   debug = false,
+  testMode = false,
 }: Live2DAvatarProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const initializedRef = useRef(false);
@@ -40,6 +42,7 @@ export function Live2DAvatar({
   const [error, setError] = useState<string | null>(null);
   const [isReady, setIsReady] = useState(false);
   const [debugData, setDebugData] = useState<FaceExpressionData | null>(null);
+  const mouseRef = useRef({ x: 0.5, y: 0.5, clicking: false });
 
   // Initialize Live2D
   useEffect(() => {
@@ -192,6 +195,83 @@ export function Live2DAvatar({
       }
     };
   }, [isReady, debug]);
+
+  // Test mode: use mouse to simulate face expression
+  useEffect(() => {
+    if (!isReady || !testMode) return;
+
+    const expressionMapper = getExpressionMapper();
+    if (debug) {
+      expressionMapper.enableDebug();
+    }
+
+    const handleMouseMove = (e: MouseEvent) => {
+      mouseRef.current.x = e.clientX / window.innerWidth;
+      mouseRef.current.y = e.clientY / window.innerHeight;
+    };
+
+    const handleMouseDown = () => {
+      mouseRef.current.clicking = true;
+    };
+
+    const handleMouseUp = () => {
+      mouseRef.current.clicking = false;
+    };
+
+    window.addEventListener("mousemove", handleMouseMove);
+    window.addEventListener("mousedown", handleMouseDown);
+    window.addEventListener("mouseup", handleMouseUp);
+
+    // Animation loop for test mode
+    let animationId: number;
+    const animate = () => {
+      const { x, y, clicking } = mouseRef.current;
+      const time = Date.now() / 1000;
+
+      // Generate simulated face expression data based on mouse position
+      const simulatedExpression: FaceExpressionData = {
+        // 眼睛开合 - 按住鼠标时眨眼
+        leftEyeOpenness: clicking ? 0.1 : 0.8 + Math.sin(time * 3) * 0.1,
+        rightEyeOpenness: clicking ? 0.1 : 0.8 + Math.sin(time * 3) * 0.1,
+
+        // 眉毛 - Y 位置越高眉毛越高
+        leftBrowY: (0.5 - y) * 2,
+        rightBrowY: (0.5 - y) * 2,
+
+        // 头部角度 - 跟随鼠标位置
+        headAngleX: (x - 0.5) * 60, // -30 to 30
+        headAngleY: (y - 0.5) * 60, // -30 to 30
+        headAngleZ: Math.sin(time * 0.5) * 5, // 轻微晃动
+
+        // 嘴巴 - 点击时张嘴
+        mouthOpenness: clicking ? 0.8 : Math.abs(Math.sin(time * 2)) * 0.1,
+        mouthSmile: (0.5 - y) * 2, // Y 位置越高越微笑
+
+        // 面部位置
+        faceX: x,
+        faceY: y,
+
+        faceDetected: true,
+      };
+
+      expressionMapper.updateFromFaceData(simulatedExpression);
+
+      if (debug) {
+        setDebugData(simulatedExpression);
+      }
+
+      animationId = requestAnimationFrame(animate);
+    };
+
+    animationId = requestAnimationFrame(animate);
+
+    return () => {
+      window.removeEventListener("mousemove", handleMouseMove);
+      window.removeEventListener("mousedown", handleMouseDown);
+      window.removeEventListener("mouseup", handleMouseUp);
+      cancelAnimationFrame(animationId);
+    };
+  }, [isReady, testMode, debug]);
 
   // Handle window resize
   useEffect(() => {
