@@ -21,6 +21,9 @@ export interface ExpressionMapperConfig {
 
   // 平滑设置
   smoothingFactor: number; // 0-1, higher = more smoothing
+
+  // 调试
+  debug: boolean;
 }
 
 // ========================
@@ -70,10 +73,11 @@ const DEFAULT_CONFIG: ExpressionMapperConfig = {
 
   eyeSensitivity: 1.0,
   browSensitivity: 1.0,
-  headSensitivity: 0.8, // 稍微降低头部跟踪灵敏度
-  mouthSensitivity: 1.5,
+  headSensitivity: 1.0,
+  mouthSensitivity: 2.0,
 
   smoothingFactor: 0.3,
+  debug: false,
 };
 
 // ========================
@@ -86,6 +90,7 @@ export class ExpressionMapper {
   private config: ExpressionMapperConfig;
   private lastExpression: FaceExpressionData | null = null;
   private parameterCache: Map<string, number> = new Map();
+  private frameCount = 0;
 
   // ========================
   // Singleton
@@ -123,38 +128,60 @@ export class ExpressionMapper {
 
     const controller = getLive2DController();
     if (!controller.isReady()) {
+      if (this.config.debug && this.frameCount % 60 === 0) {
+        console.log("[ExpressionMapper] Controller not ready");
+      }
       return;
     }
 
     const model = controller.getModel();
-    if (!model?.internalModel?.coreModel) {
+    if (!model) {
+      if (this.config.debug && this.frameCount % 60 === 0) {
+        console.log("[ExpressionMapper] No model");
+      }
       return;
     }
 
-    const coreModel = model.internalModel.coreModel as {
-      getParameterIndex: (name: string) => number;
-      setParameterValueByIndex: (index: number, value: number) => void;
-    };
+    // 获取 internalModel
+    const internalModel = model.internalModel;
+    if (!internalModel) {
+      if (this.config.debug && this.frameCount % 60 === 0) {
+        console.log("[ExpressionMapper] No internalModel");
+      }
+      return;
+    }
 
-    // 应用各种跟踪
+    // 日志输出（每60帧一次）
+    if (this.config.debug && this.frameCount % 60 === 0) {
+      console.log("[ExpressionMapper] Face data:", {
+        leftEye: data.leftEyeOpenness.toFixed(2),
+        rightEye: data.rightEyeOpenness.toFixed(2),
+        headX: data.headAngleX.toFixed(1),
+        headY: data.headAngleY.toFixed(1),
+        mouth: data.mouthOpenness.toFixed(2),
+      });
+    }
+    this.frameCount++;
+
+    // 应用各种跟踪 - 直接使用 internalModel
     if (this.config.eyeTrackingEnabled) {
-      this.applyEyeTracking(coreModel, data);
+      this.applyEyeTracking(internalModel, data);
     }
 
     if (this.config.browTrackingEnabled) {
-      this.applyBrowTracking(coreModel, data);
+      this.applyBrowTracking(internalModel, data);
     }
 
     if (this.config.headTrackingEnabled) {
-      this.applyHeadTracking(coreModel, data);
+      this.applyHeadTracking(internalModel, data);
     }
 
     if (this.config.mouthTrackingEnabled) {
-      this.applyMouthTracking(coreModel, data);
+      this.applyMouthTracking(internalModel, data);
     }
 
     if (this.config.gazeTrackingEnabled) {
-      this.applyGazeTracking(coreModel, data);
+      this.applyGazeTracking(internalModel, data);
     }
 
     this.lastExpression = data;
@@ -164,62 +191,68 @@ export class ExpressionMapper {
   // Eye Tracking
   // ========================
 
-  private applyEyeTracking(coreModel: any, data: FaceExpressionData): void {
+  private applyEyeTracking(internalModel: any, data: FaceExpressionData): void {
     const sensitivity = this.config.eyeSensitivity;
 
     // 左眼开合
     const leftEye = data.leftEyeOpenness * sensitivity;
-    this.setParameter(coreModel, PARAM_NAMES.eyeLOpen, leftEye);
+    this.setParameter(internalModel, PARAM_NAMES.eyeLOpen, leftEye);
 
     // 右眼开合
     const rightEye = data.rightEyeOpenness * sensitivity;
-    this.setParameter(coreModel, PARAM_NAMES.eyeROpen, rightEye);
+    this.setParameter(internalModel, PARAM_NAMES.eyeROpen, rightEye);
   }
 
   // ========================
   // Brow Tracking
   // ========================
 
-  private applyBrowTracking(coreModel: any, data: FaceExpressionData): void {
+  private applyBrowTracking(
+    internalModel: any,
+    data: FaceExpressionData
+  ): void {
     const sensitivity = this.config.browSensitivity;
 
     // 左眉毛
     const leftBrow = data.leftBrowY * sensitivity;
-    this.setParameter(coreModel, PARAM_NAMES.browLY, leftBrow);
+    this.setParameter(internalModel, PARAM_NAMES.browLY, leftBrow);
 
     // 右眉毛
     const rightBrow = data.rightBrowY * sensitivity;
-    this.setParameter(coreModel, PARAM_NAMES.browRY, rightBrow);
+    this.setParameter(internalModel, PARAM_NAMES.browRY, rightBrow);
   }
 
   // ========================
   // Head Tracking
   // ========================
 
-  private applyHeadTracking(coreModel: any, data: FaceExpressionData): void {
+  private applyHeadTracking(
+    internalModel: any,
+    data: FaceExpressionData
+  ): void {
     const sensitivity = this.config.headSensitivity;
 
     // 头部左右转动
     const angleX = data.headAngleX * sensitivity;
-    this.setParameter(coreModel, PARAM_NAMES.angleX, angleX);
+    this.setParameter(internalModel, PARAM_NAMES.angleX, angleX);
 
     // 头部上下点头
     const angleY = data.headAngleY * sensitivity;
-    this.setParameter(coreModel, PARAM_NAMES.angleY, angleY);
+    this.setParameter(internalModel, PARAM_NAMES.angleY, angleY);
 
     // 头部倾斜
     const angleZ = data.headAngleZ * sensitivity;
-    this.setParameter(coreModel, PARAM_NAMES.angleZ, angleZ);
+    this.setParameter(internalModel, PARAM_NAMES.angleZ, angleZ);
 
     // 身体也跟随头部轻微移动（减弱幅度）
     const bodyFactor = 0.3;
     this.setParameter(
-      coreModel,
+      internalModel,
       PARAM_NAMES.bodyAngleX,
       angleX * bodyFactor
     );
     this.setParameter(
-      coreModel,
+      internalModel,
       PARAM_NAMES.bodyAngleZ,
       angleZ * bodyFactor
     );
@@ -229,30 +262,36 @@ export class ExpressionMapper {
   // Mouth Tracking
   // ========================
 
-  private applyMouthTracking(coreModel: any, data: FaceExpressionData): void {
+  private applyMouthTracking(
+    internalModel: any,
+    data: FaceExpressionData
+  ): void {
     const sensitivity = this.config.mouthSensitivity;
 
     // 嘴巴张开度
     const mouthOpen = Math.min(1, data.mouthOpenness * sensitivity);
-    this.setParameter(coreModel, PARAM_NAMES.mouthOpenY, mouthOpen);
+    this.setParameter(internalModel, PARAM_NAMES.mouthOpenY, mouthOpen);
 
     // 微笑（嘴型）
     const mouthForm = data.mouthSmile;
-    this.setParameter(coreModel, PARAM_NAMES.mouthForm, mouthForm);
+    this.setParameter(internalModel, PARAM_NAMES.mouthForm, mouthForm);
   }
 
   // ========================
   // Gaze Tracking
   // ========================
 
-  private applyGazeTracking(coreModel: any, data: FaceExpressionData): void {
+  private applyGazeTracking(
+    internalModel: any,
+    data: FaceExpressionData
+  ): void {
     // 根据面部位置计算眼球方向
     // 当用户看向屏幕边缘时，眼球跟随
     const gazeX = (data.faceX - 0.5) * 2; // -1 到 1
     const gazeY = (data.faceY - 0.5) * -2; // -1 到 1 (y轴翻转)
 
-    this.setParameter(coreModel, PARAM_NAMES.eyeBallX, gazeX * 0.5);
-    this.setParameter(coreModel, PARAM_NAMES.eyeBallY, gazeY * 0.5);
+    this.setParameter(internalModel, PARAM_NAMES.eyeBallX, gazeX * 0.5);
+    this.setParameter(internalModel, PARAM_NAMES.eyeBallY, gazeY * 0.5);
   }
 
   // ========================
@@ -260,22 +299,48 @@ export class ExpressionMapper {
   // ========================
 
   private setParameter(
-    coreModel: any,
+    internalModel: any,
     paramNames: string[],
     value: number
   ): void {
-    // 尝试不同的参数名
-    for (const name of paramNames) {
-      try {
-        const index = coreModel.getParameterIndex(name);
-        if (index >= 0) {
-          // 应用平滑
-          const smoothedValue = this.smoothValue(name, value);
-          coreModel.setParameterValueByIndex(index, smoothedValue);
-          return;
+    // 应用平滑
+    const cacheKey = paramNames[0];
+    const smoothedValue = this.smoothValue(cacheKey, value);
+
+    // 尝试通过 coreModel 设置参数（Cubism 4）
+    const coreModel = internalModel.coreModel;
+    if (coreModel) {
+      for (const name of paramNames) {
+        try {
+          // Cubism 4 API
+          if (typeof coreModel.setParameterValueById === "function") {
+            coreModel.setParameterValueById(name, smoothedValue);
+            return;
+          }
+          // 备选 API
+          const index = coreModel.getParameterIndex?.(name);
+          if (index !== undefined && index >= 0) {
+            coreModel.setParameterValueByIndex(index, smoothedValue);
+            return;
+          }
+        } catch {
+          // 参数不存在，尝试下一个
         }
-      } catch {
-        // 参数不存在，尝试下一个
+      }
+    }
+
+    // 尝试通过 model（Cubism 2 格式）
+    const model = internalModel.model;
+    if (model) {
+      for (const name of paramNames) {
+        try {
+          if (typeof model.setParamFloat === "function") {
+            model.setParamFloat(name, smoothedValue);
+            return;
+          }
+        } catch {
+          // 参数不存在，尝试下一个
+        }
       }
     }
   }
@@ -301,30 +366,71 @@ export class ExpressionMapper {
     if (!controller.isReady()) return;
 
     const model = controller.getModel();
-    if (!model?.internalModel?.coreModel) return;
+    if (!model?.internalModel) return;
 
-    const coreModel = model.internalModel.coreModel as any;
+    const internalModel = model.internalModel;
 
     // 重置眼睛
-    this.setParameter(coreModel, PARAM_NAMES.eyeLOpen, 1);
-    this.setParameter(coreModel, PARAM_NAMES.eyeROpen, 1);
+    this.setParameter(internalModel, PARAM_NAMES.eyeLOpen, 1);
+    this.setParameter(internalModel, PARAM_NAMES.eyeROpen, 1);
 
     // 重置眉毛
-    this.setParameter(coreModel, PARAM_NAMES.browLY, 0);
-    this.setParameter(coreModel, PARAM_NAMES.browRY, 0);
+    this.setParameter(internalModel, PARAM_NAMES.browLY, 0);
+    this.setParameter(internalModel, PARAM_NAMES.browRY, 0);
 
     // 重置头部
-    this.setParameter(coreModel, PARAM_NAMES.angleX, 0);
-    this.setParameter(coreModel, PARAM_NAMES.angleY, 0);
-    this.setParameter(coreModel, PARAM_NAMES.angleZ, 0);
+    this.setParameter(internalModel, PARAM_NAMES.angleX, 0);
+    this.setParameter(internalModel, PARAM_NAMES.angleY, 0);
+    this.setParameter(internalModel, PARAM_NAMES.angleZ, 0);
 
     // 重置身体
-    this.setParameter(coreModel, PARAM_NAMES.bodyAngleX, 0);
-    this.setParameter(coreModel, PARAM_NAMES.bodyAngleZ, 0);
+    this.setParameter(internalModel, PARAM_NAMES.bodyAngleX, 0);
+    this.setParameter(internalModel, PARAM_NAMES.bodyAngleZ, 0);
 
     // 重置嘴巴
-    this.setParameter(coreModel, PARAM_NAMES.mouthOpenY, 0);
-    this.setParameter(coreModel, PARAM_NAMES.mouthForm, 0);
+    this.setParameter(internalModel, PARAM_NAMES.mouthOpenY, 0);
+    this.setParameter(internalModel, PARAM_NAMES.mouthForm, 0);
+  }
+
+  // ========================
+  // Debug
+  // ========================
+
+  enableDebug(): void {
+    this.config.debug = true;
+  }
+
+  disableDebug(): void {
+    this.config.debug = false;
+  }
+
+  // 列出模型支持的所有参数
+  listModelParameters(): string[] {
+    const controller = getLive2DController();
+    if (!controller.isReady()) return [];
+
+    const model = controller.getModel();
+    if (!model?.internalModel) return [];
+
+    const coreModel = model.internalModel.coreModel as any;
+    if (!coreModel) return [];
+
+    const params: string[] = [];
+
+    try {
+      // Cubism 4 API
+      if (typeof coreModel.getParameterCount === "function") {
+        const count = coreModel.getParameterCount();
+        for (let i = 0; i < count; i++) {
+          const id = coreModel.getParameterId?.(i);
+          if (id) params.push(id);
+        }
+      }
+    } catch {
+      // Not supported
+    }
+
+    return params;
   }
 }
 
@@ -337,4 +443,3 @@ export function getExpressionMapper(
 ): ExpressionMapper {
   return ExpressionMapper.getInstance(config);
 }
-

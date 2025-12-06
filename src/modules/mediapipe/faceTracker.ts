@@ -359,12 +359,10 @@ export class FaceTracker {
 
     // 左眼中心作为参考
     const leftEyeCenter = {
-      y:
-        (landmarks[LEFT_EYE_UPPER].y + landmarks[LEFT_EYE_LOWER].y) / 2,
+      y: (landmarks[LEFT_EYE_UPPER].y + landmarks[LEFT_EYE_LOWER].y) / 2,
     };
     const rightEyeCenter = {
-      y:
-        (landmarks[RIGHT_EYE_UPPER].y + landmarks[RIGHT_EYE_LOWER].y) / 2,
+      y: (landmarks[RIGHT_EYE_UPPER].y + landmarks[RIGHT_EYE_LOWER].y) / 2,
     };
 
     // 眉毛与眼睛的距离（归一化）
@@ -461,14 +459,26 @@ export class FaceTracker {
     const prev = this.smoothedExpression;
 
     this.smoothedExpression = {
-      leftEyeOpenness: this.lerp(prev.leftEyeOpenness, current.leftEyeOpenness, factor),
-      rightEyeOpenness: this.lerp(prev.rightEyeOpenness, current.rightEyeOpenness, factor),
+      leftEyeOpenness: this.lerp(
+        prev.leftEyeOpenness,
+        current.leftEyeOpenness,
+        factor
+      ),
+      rightEyeOpenness: this.lerp(
+        prev.rightEyeOpenness,
+        current.rightEyeOpenness,
+        factor
+      ),
       leftBrowY: this.lerp(prev.leftBrowY, current.leftBrowY, factor),
       rightBrowY: this.lerp(prev.rightBrowY, current.rightBrowY, factor),
       headAngleX: this.lerp(prev.headAngleX, current.headAngleX, factor),
       headAngleY: this.lerp(prev.headAngleY, current.headAngleY, factor),
       headAngleZ: this.lerp(prev.headAngleZ, current.headAngleZ, factor),
-      mouthOpenness: this.lerp(prev.mouthOpenness, current.mouthOpenness, factor),
+      mouthOpenness: this.lerp(
+        prev.mouthOpenness,
+        current.mouthOpenness,
+        factor
+      ),
       mouthSmile: this.lerp(prev.mouthSmile, current.mouthSmile, factor),
       faceX: this.lerp(prev.faceX, current.faceX, factor),
       faceY: this.lerp(prev.faceY, current.faceY, factor),

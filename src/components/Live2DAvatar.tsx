@@ -7,6 +7,7 @@ import {
   AVAILABLE_MODELS,
 } from "../modules/live2d";
 import { useJarvisStore } from "../stores/useJarvisStore";
+import type { FaceExpressionData } from "../modules/mediapipe/faceTracker";
 
 // ========================
 // Props
@@ -18,6 +19,7 @@ interface Live2DAvatarProps {
   position?: { x: number; y: number };
   onReady?: () => void;
   onError?: (error: Error) => void;
+  debug?: boolean;
 }
 
 // ========================
@@ -30,12 +32,14 @@ export function Live2DAvatar({
   position = { x: 0.5, y: 0.9 },
   onReady,
   onError,
+  debug = false,
 }: Live2DAvatarProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const initializedRef = useRef(false);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isReady, setIsReady] = useState(false);
+  const [debugData, setDebugData] = useState<FaceExpressionData | null>(null);
 
   // Initialize Live2D
   useEffect(() => {
@@ -103,6 +107,11 @@ export function Live2DAvatar({
     const lipSyncController = getLipSyncController();
     const expressionMapper = getExpressionMapper();
 
+    // Enable debug mode if requested
+    if (debug) {
+      expressionMapper.enableDebug();
+    }
+
     // Subscribe to store changes
     const unsubscribe = useJarvisStore.subscribe((state, prevState) => {
       // Hand detection changed
@@ -168,14 +177,21 @@ export function Live2DAvatar({
       if (state.faceExpression !== prevState.faceExpression) {
         if (state.faceExpression) {
           expressionMapper.updateFromFaceData(state.faceExpression);
+          // Update debug data
+          if (debug) {
+            setDebugData(state.faceExpression);
+          }
         }
       }
     });
 
     return () => {
       unsubscribe();
+      if (debug) {
+        expressionMapper.disableDebug();
+      }
     };
-  }, [isReady]);
+  }, [isReady, debug]);
 
   // Handle window resize
   useEffect(() => {
@@ -228,6 +244,39 @@ export function Live2DAvatar({
             >
               重试
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* Debug panel */}
+      {debug && debugData && (
+        <div className="absolute top-4 right-4 p-3 bg-black/80 border border-cyan-500/50 rounded-lg text-xs font-mono text-cyan-400 pointer-events-none">
+          <div className="text-cyan-300 font-bold mb-2">表情跟踪调试</div>
+          <div className="space-y-1">
+            <div>
+              👁️ 左眼: {debugData.leftEyeOpenness.toFixed(2)} | 右眼:{" "}
+              {debugData.rightEyeOpenness.toFixed(2)}
+            </div>
+            <div>
+              🤨 左眉: {debugData.leftBrowY.toFixed(2)} | 右眉:{" "}
+              {debugData.rightBrowY.toFixed(2)}
+            </div>
+            <div>
+              🔄 头X: {debugData.headAngleX.toFixed(1)}° | Y:{" "}
+              {debugData.headAngleY.toFixed(1)}° | Z:{" "}
+              {debugData.headAngleZ.toFixed(1)}°
+            </div>
+            <div>
+              👄 张嘴: {debugData.mouthOpenness.toFixed(2)} | 微笑:{" "}
+              {debugData.mouthSmile.toFixed(2)}
+            </div>
+            <div>
+              📍 位置: ({debugData.faceX.toFixed(2)},{" "}
+              {debugData.faceY.toFixed(2)})
+            </div>
+            <div className={debugData.faceDetected ? "text-green-400" : "text-red-400"}>
+              {debugData.faceDetected ? "✅ 检测到面部" : "❌ 未检测到面部"}
+            </div>
           </div>
         </div>
       )}

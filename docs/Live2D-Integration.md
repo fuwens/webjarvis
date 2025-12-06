@@ -6,12 +6,12 @@ Web Jarvis 集成了 Live2D 虚拟角色系统，使用 `pixi-live2d-display` �
 
 ## 技术栈
 
-| 组件 | 版本 | 用途 |
-|------|------|------|
-| pixi.js | 7.4.2 | WebGL 渲染引擎 |
-| pixi-live2d-display | 0.4.0 | Live2D 模型加载和渲染 |
-| live2d.min.js | 2.1.00_1 | Cubism 2 SDK (本地) |
-| live2dcubismcore.min.js | 5.1.0 | Cubism 4 SDK (本地) |
+| 组件                    | 版本     | 用途                  |
+| ----------------------- | -------- | --------------------- |
+| pixi.js                 | 7.4.2    | WebGL 渲染引擎        |
+| pixi-live2d-display     | 0.4.0    | Live2D 模型加载和渲染 |
+| live2d.min.js           | 2.1.00_1 | Cubism 2 SDK (本地)   |
+| live2dcubismcore.min.js | 5.1.0    | Cubism 4 SDK (本地)   |
 
 ## 架构
 
@@ -34,6 +34,7 @@ src/
 ### 1. Live2DController
 
 单例模式的核心控制器，负责：
+
 - PixiJS Application 初始化
 - Live2D 模型加载和配置
 - 视线追踪（Focus）
@@ -41,25 +42,25 @@ src/
 - 口型同步
 
 ```typescript
-import { getLive2DController } from '../modules/live2d';
+import { getLive2DController } from "../modules/live2d";
 
 // 获取控制器实例
 const controller = getLive2DController({
   scale: 0.08,
-  position: { x: 0.5, y: 0.9 }
+  position: { x: 0.5, y: 0.9 },
 });
 
 // 初始化
 await controller.initialize(canvasElement);
 
 // 加载模型
-await controller.loadModel('https://example.com/model.model3.json');
+await controller.loadModel("https://example.com/model.model3.json");
 
 // 播放动作
-controller.playMotion('Tap', 0, 3);
+controller.playMotion("Tap", 0, 3);
 
 // 设置表情
-controller.setExpression('happy');
+controller.setExpression("happy");
 
 // 设置视线焦点
 controller.setTargetFocus(0.5, -0.3);
@@ -72,17 +73,17 @@ controller.setMouthOpenness(0.7);
 
 将 Mediapipe 手势事件映射到 Live2D 动作：
 
-| 手势 | Live2D 反应 |
-|------|------------|
-| 点击 (Air Click) | 点头 + Tap 动作 |
-| 拖拽 (Air Drag) | 身体倾斜 |
-| 捏合缩放 (Pinch Zoom) | 惊讶表情 |
-| 举左手 | 头部左转 |
-| 举右手 | 头部右转 |
-| 手部移动 | 视线跟随 |
+| 手势                  | Live2D 反应     |
+| --------------------- | --------------- |
+| 点击 (Air Click)      | 点头 + Tap 动作 |
+| 拖拽 (Air Drag)       | 身体倾斜        |
+| 捏合缩放 (Pinch Zoom) | 惊讶表情        |
+| 举左手                | 头部左转        |
+| 举右手                | 头部右转        |
+| 手部移动              | 视线跟随        |
 
 ```typescript
-import { getGestureMapper } from '../modules/live2d';
+import { getGestureMapper } from "../modules/live2d";
 
 const gestureMapper = getGestureMapper();
 
@@ -90,7 +91,7 @@ const gestureMapper = getGestureMapper();
 gestureMapper.onHandDetected(true, false); // 左手检测到
 
 // 手势变化
-gestureMapper.onGestureChange('pinch');
+gestureMapper.onGestureChange("pinch");
 
 // 手部位置更新（用于视线跟踪）
 gestureMapper.onHandPositionUpdate({ x: 0.5, y: 0.3, z: 0.2 });
@@ -101,7 +102,7 @@ gestureMapper.onHandPositionUpdate({ x: 0.5, y: 0.3, z: 0.2 });
 处理语音检测和口型同步：
 
 ```typescript
-import { getLipSyncController } from '../modules/live2d';
+import { getLipSyncController } from "../modules/live2d";
 
 const lipSync = getLipSyncController();
 
@@ -121,30 +122,31 @@ lipSync.onSpeakingEnd();
 
 ```typescript
 interface Live2DConfig {
-  modelPath: string;        // 模型 JSON 路径
-  scale: number;            // 缩放比例 (默认: 0.08)
-  position: {               // 位置 (0-1 屏幕坐标)
-    x: number;              // 水平位置 (默认: 0.5 = 居中)
-    y: number;              // 垂直位置 (默认: 0.9 = 底部)
+  modelPath: string; // 模型 JSON 路径
+  scale: number; // 缩放比例 (默认: 0.08)
+  position: {
+    // 位置 (0-1 屏幕坐标)
+    x: number; // 水平位置 (默认: 0.5 = 居中)
+    y: number; // 垂直位置 (默认: 0.9 = 底部)
   };
-  idleMotionGroup: string;  // 待机动作组 (默认: "Idle")
-  lipSyncEnabled: boolean;  // 启用口型同步 (默认: true)
-  followMouse: boolean;     // 鼠标视线跟踪 (默认: true)
-  followHand: boolean;      // 手势视线跟踪 (默认: true)
+  idleMotionGroup: string; // 待机动作组 (默认: "Idle")
+  lipSyncEnabled: boolean; // 启用口型同步 (默认: true)
+  followMouse: boolean; // 鼠标视线跟踪 (默认: true)
+  followHand: boolean; // 手势视线跟踪 (默认: true)
 }
 ```
 
 ### 可用模型
 
 ```typescript
-import { AVAILABLE_MODELS } from '../modules/live2d';
+import { AVAILABLE_MODELS } from "../modules/live2d";
 
 // Cubism 4 模型
-AVAILABLE_MODELS.haru    // Haru (默认)
-AVAILABLE_MODELS.mao     // Mao
+AVAILABLE_MODELS.haru; // Haru (默认)
+AVAILABLE_MODELS.mao; // Mao
 
 // Cubism 2 模型
-AVAILABLE_MODELS.shizuku // Shizuku
+AVAILABLE_MODELS.shizuku; // Shizuku
 ```
 
 ## React 组件使用
@@ -152,15 +154,15 @@ AVAILABLE_MODELS.shizuku // Shizuku
 ### Live2DAvatar
 
 ```tsx
-import { Live2DAvatar } from '../components/Live2DAvatar';
+import { Live2DAvatar } from "../components/Live2DAvatar";
 
 function App() {
   return (
     <Live2DAvatar
-      modelKey="haru"           // 模型名称或 URL
-      scale={0.08}              // 缩放
-      position={{ x: 0.5, y: 0.9 }}  // 位置
-      onReady={() => console.log('Live2D ready')}
+      modelKey="haru" // 模型名称或 URL
+      scale={0.08} // 缩放
+      position={{ x: 0.5, y: 0.9 }} // 位置
+      onReady={() => console.log("Live2D ready")}
       onError={(err) => console.error(err)}
     />
   );
@@ -207,6 +209,7 @@ PixiJS 渲染
 ### Q: 模型加载失败
 
 确保 Live2D SDK 已正确加载：
+
 ```html
 <!-- index.html -->
 <script src="/live2d/live2d.min.js"></script>
@@ -216,6 +219,7 @@ PixiJS 渲染
 ### Q: 角色太大/太小
 
 调整 `scale` 参数：
+
 ```typescript
 getLive2DController({ scale: 0.06 }); // 更小
 getLive2DController({ scale: 0.12 }); // 更大
@@ -224,9 +228,10 @@ getLive2DController({ scale: 0.12 }); // 更大
 ### Q: 角色位置不对
 
 调整 `position` 参数：
+
 ```typescript
 getLive2DController({
-  position: { x: 0.5, y: 0.85 }  // x: 水平居中, y: 偏下
+  position: { x: 0.5, y: 0.85 }, // x: 水平居中, y: 偏下
 });
 ```
 
@@ -256,14 +261,13 @@ onCustomGesture(data: CustomData): void {
 
 ## 版本兼容性
 
-| 浏览器 | 支持状态 |
-|--------|---------|
-| Chrome 90+ | ✅ 完全支持 |
+| 浏览器      | 支持状态    |
+| ----------- | ----------- |
+| Chrome 90+  | ✅ 完全支持 |
 | Firefox 88+ | ✅ 完全支持 |
-| Safari 14+ | ✅ 完全支持 |
-| Edge 90+ | ✅ 完全支持 |
+| Safari 14+  | ✅ 完全支持 |
+| Edge 90+    | ✅ 完全支持 |
 
 ---
 
-*最后更新: 2025-12-05*
-
+_最后更新: 2025-12-05_
