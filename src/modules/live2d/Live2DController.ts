@@ -318,8 +318,7 @@ export class Live2DController {
 
   stopAllMotions(): void {
     if (!this.model?.internalModel) return;
-    
-    // @ts-expect-error - Internal API
+
     const motionManager = this.model.internalModel.motionManager;
     if (motionManager) {
       // 停止所有正在播放的动画

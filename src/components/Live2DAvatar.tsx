@@ -354,7 +354,11 @@ export function Live2DAvatar({
               📍 位置: ({debugData.faceX.toFixed(2)},{" "}
               {debugData.faceY.toFixed(2)})
             </div>
-            <div className={debugData.faceDetected ? "text-green-400" : "text-red-400"}>
+            <div
+              className={
+                debugData.faceDetected ? "text-green-400" : "text-red-400"
+              }
+            >
               {debugData.faceDetected ? "✅ 检测到面部" : "❌ 未检测到面部"}
             </div>
           </div>

@@ -146,7 +146,9 @@ export class ExpressionMapper {
     if (!this.isTrackingActive) {
       controller.setExpressionTrackingMode(true);
       this.isTrackingActive = true;
-      console.log("[ExpressionMapper] Face detected, stopping idle motion for tracking");
+      console.log(
+        "[ExpressionMapper] Face detected, stopping idle motion for tracking"
+      );
     }
 
     const model = controller.getModel();
@@ -179,8 +181,10 @@ export class ExpressionMapper {
       const coreModel = internalModel.coreModel as any;
       if (coreModel) {
         console.log("[ExpressionMapper] CoreModel structure:", {
-          hasGetParameterIndex: typeof coreModel.getParameterIndex === "function",
-          hasSetParameterValueByIndex: typeof coreModel.setParameterValueByIndex === "function",
+          hasGetParameterIndex:
+            typeof coreModel.getParameterIndex === "function",
+          hasSetParameterValueByIndex:
+            typeof coreModel.setParameterValueByIndex === "function",
           has_model: !!coreModel._model,
           coreModelKeys: Object.keys(coreModel).slice(0, 20),
         });
@@ -360,7 +364,11 @@ export class ExpressionMapper {
               if (paramId === name) {
                 model.setParameterValueByIndex?.(i, smoothedValue);
                 if (this.config.debug && this.frameCount % 120 === 0) {
-                  console.log(`[ExpressionMapper] Set ${name} = ${smoothedValue.toFixed(2)} via _model`);
+                  console.log(
+                    `[ExpressionMapper] Set ${name} = ${smoothedValue.toFixed(
+                      2
+                    )} via _model`
+                  );
                 }
                 return;
               }
@@ -372,7 +380,11 @@ export class ExpressionMapper {
           if (index !== undefined && index >= 0) {
             coreModel.setParameterValueByIndex?.(index, smoothedValue);
             if (this.config.debug && this.frameCount % 120 === 0) {
-              console.log(`[ExpressionMapper] Set ${name}[${index}] = ${smoothedValue.toFixed(2)} via coreModel`);
+              console.log(
+                `[ExpressionMapper] Set ${name}[${index}] = ${smoothedValue.toFixed(
+                  2
+                )} via coreModel`
+              );
             }
             return;
           }
@@ -393,7 +405,11 @@ export class ExpressionMapper {
           if (typeof model.setParamFloat === "function") {
             model.setParamFloat(name, smoothedValue);
             if (this.config.debug && this.frameCount % 120 === 0) {
-              console.log(`[ExpressionMapper] Set ${name} = ${smoothedValue.toFixed(2)} via model.setParamFloat`);
+              console.log(
+                `[ExpressionMapper] Set ${name} = ${smoothedValue.toFixed(
+                  2
+                )} via model.setParamFloat`
+              );
             }
             return;
           }
@@ -409,7 +425,11 @@ export class ExpressionMapper {
         if (typeof internalModel.setParameter === "function") {
           internalModel.setParameter(name, smoothedValue);
           if (this.config.debug && this.frameCount % 120 === 0) {
-            console.log(`[ExpressionMapper] Set ${name} = ${smoothedValue.toFixed(2)} via internalModel.setParameter`);
+            console.log(
+              `[ExpressionMapper] Set ${name} = ${smoothedValue.toFixed(
+                2
+              )} via internalModel.setParameter`
+            );
           }
           return;
         }
@@ -420,7 +440,9 @@ export class ExpressionMapper {
 
     // 如果所有方法都失败了，在调试模式下记录
     if (this.config.debug && this.frameCount % 600 === 0) {
-      console.warn(`[ExpressionMapper] Could not set parameter: ${paramNames.join(", ")}`);
+      console.warn(
+        `[ExpressionMapper] Could not set parameter: ${paramNames.join(", ")}`
+      );
     }
   }
 
